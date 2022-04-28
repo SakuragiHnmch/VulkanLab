@@ -25,7 +25,7 @@ const std::vector<const char*> validationLayers = {
 };
 
 const std::vector<const char*> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME // #define VK_KHR_SWAPCHAIN_EXTENSION_NAME "VK_KHR_swapchain"
 };
 
 #ifdef NDEBUG
@@ -172,7 +172,7 @@ private:
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> extensions(extensionCount);
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-        std::cout << "available extensions:\n";
+        std::cout << "available instance extensions:\n";
         for (const auto &extension : extensions) {
             std::cout << '\t' << extension.extensionName << '\n';
         }
@@ -270,7 +270,7 @@ private:
 
         std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
-        std::cout << "availableExtensions:\n";
+        std::cout << "available device Extensions:\n";
         for (const auto &extension : availableExtensions) {
             std::cout << '\t' << extension.extensionName << '\n';
             requiredExtensions.erase(extension.extensionName);
@@ -282,7 +282,7 @@ private:
         uint32_t layerCount;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
         std::vector<VkLayerProperties> availableLayers(layerCount);
-        std::cout << layerCount << " layers is available" << std::endl;
+        std::cout << layerCount << "instance layers is available" << std::endl;
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
         for (const auto& layer : availableLayers)
@@ -665,10 +665,6 @@ private:
             throw std::runtime_error("failed to create graphics pipeline!");
         }
 
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create graphics pipeline!");
-        }
-
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
         vkDestroyShaderModule(device, fragShaderModule, nullptr);
     }
@@ -778,7 +774,7 @@ private:
             extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
-        std::cout << "required extensions:\n";
+        std::cout << "required instance extensions:\n";
         for (const auto& extension : extensions) {
             std::cout << '\t' << extension << '\n';
         }
