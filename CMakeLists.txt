@@ -21,6 +21,7 @@ target_include_directories(learn_vulkan PRIVATE
         ${Vulkan_INCLUDE_DIRS}
         3rd/glm
         3rd/glfw-3.3.6/include
+        3rd/stb_image
         )
 target_link_directories(learn_vulkan PRIVATE
 #        ${Vulkan_LIBRARY}
