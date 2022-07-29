@@ -29,8 +29,28 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+#include "camera.h"
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
+
+//void printMat4(glm::mat4 mat) {
+//    for (int i = 0; i < 4; i++) {
+//        std::cout << '\t';
+//        for (int j = 0; j < 4; j++) {
+//            std::cout << mat[i][j] << " ";
+//        }
+//        std::cout << '\n';
+//    }
+//}
+
+//camera
+Camera camera(glm::vec3(0.0f, 0.0f, 2.0f));
+float lastX = WIDTH / 2, lastY = HEIGHT / 2;
+bool firstMouse = true;
+//time
+float deltaTime = 0.0f;
+float lastTime = 0.0f;
 
 const std::string MODEL_PATH = "../models/viking_room.obj";
 const std::string TEXTURE_PATH = "../images/viking_room.png";
@@ -50,6 +70,46 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
+
+void processInput(GLFWwindow *window)
+{
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    //the change in cameraPos wound be applied reversely in the objects
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+    if(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        camera.ProcessKeyboard(UP, deltaTime);
+    if(glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        camera.ProcessKeyboard(DOWN, deltaTime);
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if(firstMouse){
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse =false;
+    }
+    float offsetX = xpos - lastX;
+    float offsetY = lastY - ypos;//y坐标是自底往上增大的，而俯仰角应该随着鼠标自底往上减小
+
+    //don`t forget update the last position!!!!!
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(offsetX, offsetY, true);
+}
+
+void scroll_callback(GLFWwindow* window, double offsetX, double offsetY){
+    camera.ProcessMouseScroll(offsetY);
+}
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
     auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -229,6 +289,9 @@ private:
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glfwSetCursorPosCallback(window, mouse_callback);
+        glfwSetScrollCallback(window, scroll_callback);
     }
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -267,6 +330,12 @@ private:
 
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
+            float  currentTime = glfwGetTime();
+            deltaTime = currentTime - lastTime;
+            currentTime = currentTime;
+
+            processInput(window);
+
             glfwPollEvents();
             drawFrame();
         }
@@ -1402,8 +1471,9 @@ private:
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
         UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo.view = glm::lookAt(glm::vec3(0.0f, .0f, 6.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        ubo.model = glm::mat4(1.0f);
+        // ubo.view = glm::lookAt(glm::vec3(0.0f, .0f, 6.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        ubo.view = camera.GetViewMatrix();
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1;
 
