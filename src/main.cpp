@@ -686,7 +686,10 @@ private:
 
     void createDescriptorSetLayout() {
         VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        //Index of a descriptor within a given set. All descriptors from a single layout (or set) must have a unique binding. 
+        //This same binding is also used inside shaders to access a descriptor.
         uboLayoutBinding.binding = 0;
+        //Number of descriptors of a selected type accessed as an array. For a single descriptor, 1 value should be used.
         uboLayoutBinding.descriptorCount = 1;
         uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         uboLayoutBinding.pImmutableSamplers = nullptr;
