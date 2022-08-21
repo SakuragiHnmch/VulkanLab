@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.18)
 project(learn_vulkan)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -6,16 +6,21 @@ set(CMAKE_CXX_STANDARD 17)
 # 3rd library
 add_subdirectory(3rd)
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan)
+# Alright, no errors? Tell me what you found!
+#message("Vulkan found? " ${VULKAN_FOUND})
+#message("Alright, where is it? " ${Vulkan_LIBRARIES})
+#message("And I canq include it? " ${Vulkan_INCLUDE_DIRS})
+
+IF (NOT Vulkan_FOUND)
+    find_library(Vulkan_LIBRARY NAMES vulkan HINTS "$ENV{VULKAN_SDK}/lib" "${CMAKE_SOURCE_DIR}/libs/vulkan" REQUIRED)
+    IF (Vulkan_LIBRARY)
+        set(Vulkan_FOUND ON)
+        MESSAGE("Using bundled Vulkan library version")
+    ENDIF()
+ENDIF()
 
 add_executable(learn_vulkan src/main.cpp)
-
-#target_add_custom_command(
-#        TARGET learn_vulkan POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E
-#        copy ${CMAKE_CURRENT_SOURCE_DIR}/resource ${CMAKE_CURRENT_BINARY_DIR}
-#)
-
 
 target_include_directories(learn_vulkan PRIVATE
         ${Vulkan_INCLUDE_DIRS}
