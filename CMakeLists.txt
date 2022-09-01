@@ -1,31 +1,40 @@
 cmake_minimum_required(VERSION 3.17)
-project(learn_vulkan)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+set(NAME learn_vulkan)
+project(${NAME})
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
+include_directories(3rd)
+include_directories(3rd/glm)
+include_directories(3rd/imgui)
+include_directories(3rd/tinygltf)
+include_directories(3rd/ktx/include)
+include_directories(3rd/ktx/other_include)
+include_directories(base)
 
-# 3rd library
-add_subdirectory(3rd)
+if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
+    message(STATUS "Using module to find Vulkan")
+    find_package(Vulkan)
+endif()
 
-find_package(Vulkan REQUIRED)
+if (NOT Vulkan_FOUND)
+    message(FATAL_ERROR "Could not find Vulkan library!")
+else()
+    message(STATUS ${Vulkan_LIBRARY})
+endif()
 
-add_executable(learn_vulkan src/main.cpp)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
 
-#target_add_custom_command(
-#        TARGET learn_vulkan POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E
-#        copy ${CMAKE_CURRENT_SOURCE_DIR}/resource ${CMAKE_CURRENT_BINARY_DIR}
-#)
+set(CMAKE_CXX_FLAGS "-DVK_USE_PLATFORM_MACOS_MVK -DVK_EXAMPLE_XCODE_GENERATED")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOMINMAX -D_USE_MATH_DEFINES")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc -xobjective-c++")
 
+# Clang specific stuff
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-switch-enum")
+endif()
 
-target_include_directories(learn_vulkan PRIVATE
-        ${Vulkan_INCLUDE_DIRS}
-        3rd/glm
-        3rd/glfw-3.3.6/include
-        3rd/stb_image
-        3rd/tinyobjloader
-        )
-target_link_directories(learn_vulkan PRIVATE
-#        ${Vulkan_LIBRARY}
-        )
+link_libraries(${Vulkan_LIBRARIES} "-framework AppKit" "-framework QuartCore")
 
-target_link_libraries(learn_vulkan ${Vulkan_LIBRARIES} glfw)
+add_subdirectory(base)
+add_subdirectory(examples)
