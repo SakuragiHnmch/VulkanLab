@@ -212,7 +212,7 @@ public:
     virtual void renderFrame();
 
     /**Called when the UI overlay is updating, can be used to add custom elements to the overlay */
-    virtual void OnUpdateUIOverlay(vks::UIOverlay *overlay);
+    virtual void OnUpdateUIOverlay(UIOverlay *overlay);
 };
 
 #define VULKAN_EXAMPLE_MAIN()																		\

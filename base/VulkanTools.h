@@ -27,7 +27,7 @@
 	VkResult res = (f);																					\
 	if (res != VK_SUCCESS)																				\
 	{																									\
-		std::cout << "Fatal : VkResult is \"" << vks::tools::errorString(res) << "\" in " << __FILE__ << " at line " << __LINE__ << "\n"; \
+		std::cout << "Fatal : VkResult is \"" << tools::errorString(res) << "\" in " << __FILE__ << " at line " << __LINE__ << "\n"; \
 		assert(res == VK_SUCCESS);																		\
 	}																									\
 }
@@ -91,11 +91,7 @@ namespace tools
         void exitFatal(const std::string& message, VkResult resultCode);
 
         // Load a SPIR-V shader (binary)
-#if defined(__ANDROID__)
-        VkShaderModule loadShader(AAssetManager* assetManager, const char *fileName, VkDevice device);
-#else
         VkShaderModule loadShader(const char *fileName, VkDevice device);
-#endif
 
         /** @brief Checks if a file exists */
         bool fileExists(const std::string &filename);
