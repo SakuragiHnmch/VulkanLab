@@ -10,17 +10,9 @@
 
 #include "VulkanSwapChain.h"
 
-void VulkanSwapChain::initSurface(void* view)
+void VulkanSwapChain::initSurface(GLFWwindow* window)
 {
-    VkResult err = VK_SUCCESS;
-
-    // Create the os-specific surface
-    VkMacOSSurfaceCreateInfoMVK surfaceCreateInfo = {};
-    surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
-    surfaceCreateInfo.pNext = NULL;
-    surfaceCreateInfo.flags = 0;
-    surfaceCreateInfo.pView = view;
-    err = vkCreateMacOSSurfaceMVK(instance, &surfaceCreateInfo, NULL, &surface);
+    VkResult err = glfwCreateWindowSurface(instance, window, nullptr, &surface);
 
     if (err != VK_SUCCESS) {
         tools::exitFatal("Could not create surface!", err);
@@ -227,17 +219,6 @@ void VulkanSwapChain::create(uint32_t *width, uint32_t *height, bool vsync, bool
 
     // Determine the number of images
     uint32_t desiredNumberOfSwapchainImages = surfCaps.minImageCount + 1;
-#if (defined(VK_USE_PLATFORM_MACOS_MVK) && defined(VK_EXAMPLE_XCODE_GENERATED))
-    // SRS - Work around known MoltenVK issue re 2x frame rate when vsync (VK_PRESENT_MODE_FIFO_KHR) enabled
-    struct utsname sysInfo;
-    uname(&sysInfo);
-    // SRS - When vsync is on, use minImageCount when not in fullscreen or when running on Apple Silcon
-    // This forces swapchain image acquire frame rate to match display vsync frame rate
-    if (vsync && (!fullscreen || strcmp(sysInfo.machine, "arm64") == 0))
-    {
-        desiredNumberOfSwapchainImages = surfCaps.minImageCount;
-    }
-#endif
     if ((surfCaps.maxImageCount > 0) && (desiredNumberOfSwapchainImages > surfCaps.maxImageCount))
     {
         desiredNumberOfSwapchainImages = surfCaps.maxImageCount;

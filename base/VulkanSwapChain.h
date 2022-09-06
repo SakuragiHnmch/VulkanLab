@@ -5,7 +5,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <vector>
-
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 #include "VulkanTools.h"
 
@@ -42,7 +43,7 @@ public:
     std::vector<SwapChainBuffer> buffers;
     uint32_t queueNodeIndex = UINT32_MAX;
 
-    void initSurface(void* view);
+    void initSurface(GLFWwindow* view);
 
     void connect(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device);
     void create(uint32_t* width, uint32_t* height, bool vsync = false, bool fullscreen = false);

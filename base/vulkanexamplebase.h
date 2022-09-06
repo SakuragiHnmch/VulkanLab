@@ -14,7 +14,10 @@
 #include <random>
 #include <algorithm>
 #include <string>
+#include <sys/stat.h>
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
@@ -48,7 +51,7 @@ public:
     };
     std::unordered_map<std::string, CommandLineOption> options;
     CommandLineParser();
-    void add(std::string name, std::vector commands, bool hasValue, std::string help);
+    void add(std::string name, std::vector<std::string> commands, bool hasValue, std::string help);
     void printHelp();
     void parse(std::vector<const char*> arguments);
     bool isSet(std::string name);
@@ -61,7 +64,6 @@ private:
     uint32_t destWidth;
     uint32_t destHeight;
     bool resizing = false;
-    std::string shaderDir = "glsl";
 
     std::string getWindowTitle();
     void windowResize();
@@ -74,12 +76,11 @@ private:
     void initSwapchain();
     void setupSwapChain();
     void createCommandBuffers();
-    void destroyCommandBuffers();
 
 protected:
     std::string getShadersPath() const;
 
-    uint32_t frameCouter = 0;
+    uint32_t frameCounter = 0;
     uint32_t lastFPS = 0;
     std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp, tPrevEnd;
     VkInstance instance;
@@ -93,9 +94,9 @@ protected:
     std::vector<const char*> enabledDeviceExtensions;
     std::vector<const char*> enabledInstanceExtensions;
     void* deviceCreatepNextChain = nullptr; // Optional pNext structure for passing extension structures to device creation
-    VkDeivce device;
+    VkDevice device;
     VkQueue queue;
-    VkForamt depthFormat;
+    VkFormat depthFormat;
     VkCommandPool cmdPool;
     VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submitInfo;
@@ -123,12 +124,12 @@ public:
     uint32_t height  = 720;
     float frameTimer = 1.0f;
     float timer      = 0.0f;
-    float timeSpeed  = 0.25f;
+    float timerSpeed  = 0.25f;
     bool paused      = false;
 
     static std::vector<const char*> args;
 
-    UIOverlay UIOverlay;
+    UIOverlay overlay;
     CommandLineParser commandLineParser;
     Benchmark benchmark;
     VulkanDevice *vulkanDevice;
@@ -165,7 +166,7 @@ public:
         bool middle = false;
     } mouseButtons;
 
-    void *view;
+    GLFWwindow* window;
     bool quit = false;
 
     VulkanExampleBase(bool enableValidation = false);
@@ -173,8 +174,7 @@ public:
 
     // Setup the vulkan instance, enable required extensions and connect to the physical device (GPU)
     bool initVulkan();
-    void* setupWindow(void* view);
-    void displayLinkOutputCb();
+    GLFWwindow* setupWindow();
     void mouseDragged(float x, float y);
     void windowWillResize(float x, float y);
     void windowDidResize();
@@ -207,24 +207,23 @@ public:
 
     /** Prepare the next frame for workload submission by acquiring the next swap chain image */
     void prepareFrame();
-    void submitFrame();
+    void presentFrame();
     /**Default image acquire + submission and command buffer submission function */
     virtual void renderFrame();
 
     /**Called when the UI overlay is updating, can be used to add custom elements to the overlay */
-    virtual void OnUpdateUIOverlay(UIOverlay *overlay);
+    virtual void OnUpdateUIOverlay(UIOverlay* overlay);
 };
 
 #define VULKAN_EXAMPLE_MAIN()																		\
 VulkanExample *vulkanExample;																		\
 int main(const int argc, const char *argv[])														\
 {																									\
-	@autoreleasepool																				\
 	{																								\
 		for (size_t i = 0; i < argc; i++) { VulkanExample::args.push_back(argv[i]); };				\
 		vulkanExample = new VulkanExample();														\
-		vulkanExample->initVulkan();																\
-		vulkanExample->setupWindow(nullptr);														\
+		vulkanExample->setupWindow();																\
+		vulkanExample->initVulkan();														        \
 		vulkanExample->prepare();																	\
 		vulkanExample->renderLoop();																\
 		delete(vulkanExample);																		\

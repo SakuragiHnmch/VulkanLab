@@ -11,4 +11,4 @@ set(KTX_SOURCES
     ${KTX_DIR}/lib/filestream.c vulkanexamplebase.h vulkanexamplebase.cpp)
 
 add_library(base STATIC ${BASE_SRC} ${KTX_SOURCES})
-target_link_libraries(base ${Vulkan_LIBRARY})
+target_link_libraries(base ${Vulkan_LIBRARY} glfw)

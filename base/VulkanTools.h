@@ -34,7 +34,6 @@
 
 const std::string getAssetPath();
 
-
 namespace tools
     {
         /** @brief Disable message boxes on fatal errors */

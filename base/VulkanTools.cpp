@@ -1,5 +1,10 @@
 #include "VulkanTools.h"
 
+const std::string getAssetPath()
+{
+    return "../../data/";
+}
+
 namespace tools
 {
     bool errorModeSilent = false;

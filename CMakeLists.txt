@@ -10,6 +10,7 @@ include_directories(3rd/imgui)
 include_directories(3rd/tinygltf)
 include_directories(3rd/ktx/include)
 include_directories(3rd/ktx/other_include)
+include_directories(3rd/glfw-3.3.6/include)
 include_directories(base)
 
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
@@ -34,7 +35,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-switch-enum")
 endif()
 
-link_libraries(${Vulkan_LIBRARIES} "-framework AppKit" "-framework QuartCore")
+link_libraries(${Vulkan_LIBRARIES})
 
+add_subdirectory(3rd)
 add_subdirectory(base)
 add_subdirectory(examples)
