@@ -4,11 +4,9 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include "vulkan/vulkan.h"
-
-#include <ktx.h>
-#include <ktxvulkan.h>
 
 #include "VulkanBuffer.h"
 #include "VulkanDevice.h"
@@ -30,7 +28,6 @@ public:
 
     void      updateDescriptor();
     void      destroy();
-    ktxResult loadKTXFile(std::string filename, ktxTexture **target);
 };
 
 class Texture2D : public Texture
