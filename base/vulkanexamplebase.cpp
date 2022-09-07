@@ -231,7 +231,12 @@ GLFWwindow* VulkanExampleBase::setupWindow()
 
     window = glfwCreateWindow(width, height, getWindowTitle().c_str(), nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetKeyCallback(window, sKeyCallback);
+    glfwSetCursorPosCallback(window, sCursorPosCallback);
+    glfwSetMouseButtonCallback(window, sMouseButtonCallback);
+
+    glfwGetWindowUserPointer(window);
 }
 
 void VulkanExampleBase::prepare()
@@ -288,6 +293,101 @@ void VulkanExampleBase::renderLoop()
 
     if (device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(device);
+    }
+}
+
+void VulkanExampleBase::sKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    auto* mInstance = reinterpret_cast<VulkanExampleBase*>(glfwGetWindowUserPointer(window));
+    mInstance->keyCallback(key, action);
+}
+void VulkanExampleBase::sCursorPosCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    auto* mInstance = reinterpret_cast<VulkanExampleBase*>(glfwGetWindowUserPointer(window));
+    mInstance->cursorPosCallback(xpos, ypos);
+}
+void VulkanExampleBase::sMouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    auto* mInstance = reinterpret_cast<VulkanExampleBase*>(glfwGetWindowUserPointer(window));
+    mInstance->mouseButtonCallback(button, action);
+}
+
+void VulkanExampleBase::keyCallback(int key, int action)
+{
+    switch (action) {
+        case GLFW_PRESS:
+            switch (key) {
+                case GLFW_KEY_W:
+                    camera.keys.up = true;
+                    break;
+                case GLFW_KEY_S:
+                    camera.keys.down = true;
+                    break;
+                case GLFW_KEY_A:
+                    camera.keys.left = true;
+                    break;
+                case GLFW_KEY_D:
+                    camera.keys.right = true;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case GLFW_RELEASE:
+            switch (key) {
+                case GLFW_KEY_W:
+                    camera.keys.up = false;
+                    break;
+                case GLFW_KEY_S:
+                    camera.keys.down = false;
+                    break;
+                case GLFW_KEY_A:
+                    camera.keys.left = false;
+                    break;
+                case GLFW_KEY_D:
+                    camera.keys.right = false;
+                    break;
+                default:
+                    break;
+            }
+            break;
+    }
+}
+
+void VulkanExampleBase::cursorPosCallback(double xpos, double ypos)
+{
+    handleMouseMove(xpos, ypos);
+}
+
+void VulkanExampleBase::mouseButtonCallback(int button, int action)
+{
+    switch (action) {
+        case GLFW_PRESS:
+            switch (button) {
+                case GLFW_MOUSE_BUTTON_LEFT:
+                    mouseButtons.left = true;
+                    break;
+                case GLFW_MOUSE_BUTTON_RIGHT:
+                    mouseButtons.right = true;
+                    break;
+                case GLFW_MOUSE_BUTTON_MIDDLE:
+                    mouseButtons.middle = true;
+                    break;
+            }
+            break;
+        case GLFW_RELEASE:
+            switch (button) {
+                case GLFW_MOUSE_BUTTON_LEFT:
+                    mouseButtons.left = false;
+                    break;
+                case GLFW_MOUSE_BUTTON_RIGHT:
+                    mouseButtons.right = false;
+                    break;
+                case GLFW_MOUSE_BUTTON_MIDDLE:
+                    mouseButtons.middle = false;
+                    break;
+            }
+            break;
     }
 }
 

@@ -77,6 +77,9 @@ private:
     void setupSwapChain();
     void createCommandBuffers();
 
+    static void sKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void sCursorPosCallback(GLFWwindow* window, double xpos, double ypos);
+    static void sMouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 protected:
     std::string getShadersPath() const;
 
@@ -124,7 +127,7 @@ public:
     uint32_t height  = 720;
     float frameTimer = 1.0f;
     float timer      = 0.0f;
-    float timerSpeed  = 0.25f;
+    float timerSpeed = 0.25f;
     bool paused      = false;
 
     static std::vector<const char*> args;
@@ -178,6 +181,10 @@ public:
     void mouseDragged(float x, float y);
     void windowWillResize(float x, float y);
     void windowDidResize();
+
+    void keyCallback(int key, int action);
+    void cursorPosCallback(double xpos, double ypos);
+    void mouseButtonCallback(int button, int action);
 
     virtual VkResult createInstance(bool enableValidation);
     /**(Pure virtual) Render function to be implemented by the sample application */
