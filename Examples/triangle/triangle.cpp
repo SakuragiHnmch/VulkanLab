@@ -24,21 +24,16 @@ public:
     // Vertex layout
     struct Vertex {
         float position[3];
-        float color[3];
+        float normal[3];
+        float texCoords[2];
     };
 
     // Vertex buffer and attributes
     struct {
         VkDeviceMemory memory; // Handle to the device memory for this buffer
         VkBuffer buffer;       // Handle to the Vulkan buffer object that the memory is bound to
-    } vertices;
-
-    // Index buffer
-    struct {
-        VkDeviceMemory memory;
-        VkBuffer buffer;
         uint32_t count;
-    } indices;
+    } vertices;
 
     // Uniform buffer block object
     struct {
@@ -53,10 +48,25 @@ public:
         glm::mat4 viewMatrix;
     } uboVS;
 
+    struct PushConstantData {
+        glm::vec3 position;
+        glm::vec3 viewPos;
+        glm::vec3 ambient;
+        glm::vec3 diffuse;
+        glm::vec3 specular;
+    } pushConstantData;
+
+    struct LightMap {
+        Texture2D diffuseMap;
+        Texture2D specularMap;
+    } lightMap;
+
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSet descriptorSet;
+    VkDescriptorSet descriptorSet;\
+
+    glm::vec3 lightPos = glm::vec3(.2f, 1.0f, 2.0f);
 
     VulkanExample() : VulkanExampleBase(ENABLE_VALIDATION)
     {
@@ -81,11 +91,14 @@ public:
         vkDestroyBuffer(device, vertices.buffer, nullptr);
         vkFreeMemory(device, vertices.memory, nullptr);
 
-        vkDestroyBuffer(device, indices.buffer, nullptr);
-        vkFreeMemory(device, indices.memory, nullptr);
-
         vkDestroyBuffer(device, uniformBufferVS.buffer, nullptr);
         vkFreeMemory(device, uniformBufferVS.memory, nullptr);
+    }
+
+    void loadAssets()
+    {
+        lightMap.diffuseMap.loadFromFile(getAssetPath() + "images/container.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue);
+        lightMap.specularMap.loadFromFile(getAssetPath() + "images/container_specular.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, queue);
     }
 
     // Get a new command buffer from the command pool
@@ -150,18 +163,51 @@ public:
         // what should be done a real-world application, where you should allocate large chunks of memory at once instead.
 
         // Setup vertices
-        std::vector<Vertex> vertexBuffer =
-                {
-                        { {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-                        { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-                        { {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
-                };
-        uint32_t vertexBufferSize = static_cast<uint32_t>(vertexBuffer.size()) * sizeof(Vertex);
+        std::vector<Vertex> vertexBuffer = {
+            {{-0.5f, -0.5f, -0.5f},  {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f}},
+            {{ 0.5f, -0.5f, -0.5f},  {0.0f,  0.0f, -1.0f},  {1.0f,  0.0f}},
+            {{ 0.5f,  0.5f, -0.5f},  {0.0f,  0.0f, -1.0f},  {1.0f,  1.0f}},
+            {{ 0.5f,  0.5f, -0.5f},  {0.0f,  0.0f, -1.0f},  {1.0f,  1.0f}},
+            {{-0.5f,  0.5f, -0.5f},  {0.0f,  0.0f, -1.0f},  {0.0f,  1.0f}},
+            {{-0.5f, -0.5f, -0.5f},  {0.0f,  0.0f, -1.0f},  {0.0f,  0.0f}},
 
-        // Setup indices
-        std::vector<uint32_t> indexBuffer = { 0, 1, 2 };
-        indices.count = static_cast<uint32_t>(indexBuffer.size());
-        uint32_t indexBufferSize = indices.count * sizeof(uint32_t);
+            {{-0.5f, -0.5f,  0.5f},  {0.0f,  0.0f,  1.0f},  {0.0f,  0.0f}},
+            {{ 0.5f, -0.5f,  0.5f},  {0.0f,  0.0f,  1.0f},  {1.0f,  0.0f}},
+            {{ 0.5f,  0.5f,  0.5f},  {0.0f,  0.0f,  1.0f},  {1.0f,  1.0f}},
+            {{ 0.5f,  0.5f,  0.5f},  {0.0f,  0.0f,  1.0f},  {1.0f,  1.0f}},
+            {{-0.5f,  0.5f,  0.5f},  {0.0f,  0.0f,  1.0f},  {0.0f,  1.0f}},
+            {{-0.5f, -0.5f,  0.5f},  {0.0f,  0.0f,  1.0f},  {0.0f,  0.0f}},
+
+            {{-0.5f,  0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f},  {1.0f,  0.0f}},
+            {{-0.5f,  0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f},  {1.0f,  1.0f}},
+            {{-0.5f, -0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f},  {0.0f,  1.0f}},
+            {{-0.5f, -0.5f, -0.5f}, {-1.0f,  0.0f,  0.0f},  {0.0f,  1.0f}},
+            {{-0.5f, -0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f},  {0.0f,  0.0f}},
+            {{-0.5f,  0.5f,  0.5f}, {-1.0f,  0.0f,  0.0f},  {1.0f,  0.0f}},
+
+            {{ 0.5f,  0.5f,  0.5f},  {1.0f,  0.0f,  0.0f},  {1.0f,  0.0f}},
+            {{ 0.5f,  0.5f, -0.5f},  {1.0f,  0.0f,  0.0f},  {1.0f,  1.0f}},
+            {{ 0.5f, -0.5f, -0.5f},  {1.0f,  0.0f,  0.0f},  {0.0f,  1.0f}},
+            {{ 0.5f, -0.5f, -0.5f},  {1.0f,  0.0f,  0.0f},  {0.0f,  1.0f}},
+            {{ 0.5f, -0.5f,  0.5f},  {1.0f,  0.0f,  0.0f},  {0.0f,  0.0f}},
+            {{ 0.5f,  0.5f,  0.5f},  {1.0f,  0.0f,  0.0f},  {1.0f,  0.0f}},
+
+            {{-0.5f, -0.5f, -0.5f},  {0.0f, -1.0f,  0.0f},  {0.0f,  1.0f}},
+            {{ 0.5f, -0.5f, -0.5f},  {0.0f, -1.0f,  0.0f},  {1.0f,  1.0f}},
+            {{ 0.5f, -0.5f,  0.5f},  {0.0f, -1.0f,  0.0f},  {1.0f,  0.0f}},
+            {{ 0.5f, -0.5f,  0.5f},  {0.0f, -1.0f,  0.0f},  {1.0f,  0.0f}},
+            {{-0.5f, -0.5f,  0.5f},  {0.0f, -1.0f,  0.0f},  {0.0f,  0.0f}},
+            {{-0.5f, -0.5f, -0.5f},  {0.0f, -1.0f,  0.0f},  {0.0f,  1.0f}},
+
+            {{-0.5f,  0.5f, -0.5f},  {0.0f,  1.0f,  0.0f},  {0.0f,  1.0f}},
+            {{ 0.5f,  0.5f, -0.5f},  {0.0f,  1.0f,  0.0f},  {1.0f,  1.0f}},
+            {{ 0.5f,  0.5f,  0.5f},  {0.0f,  1.0f,  0.0f},  {1.0f,  0.0f}},
+            {{ 0.5f,  0.5f,  0.5f},  {0.0f,  1.0f,  0.0f},  {1.0f,  0.0f}},
+            {{-0.5f,  0.5f,  0.5f},  {0.0f,  1.0f,  0.0f},  {0.0f,  0.0f}},
+            {{-0.5f,  0.5f, -0.5f},  {0.0f,  1.0f,  0.0f},  {0.0f,  1.0f}}
+        };
+        uint32_t vertexBufferSize = static_cast<uint32_t>(vertexBuffer.size()) * sizeof(Vertex);
+        vertices.count = static_cast<uint32_t>(vertexBuffer.size());
 
         VkMemoryAllocateInfo memAlloc = {};
         memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -187,7 +233,6 @@ public:
 
         struct {
             StagingBuffer vertices;
-            StagingBuffer indices;
         } stagingBuffers;
 
         // vertex buffer
@@ -221,31 +266,6 @@ public:
         VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &vertices.memory));
         VK_CHECK_RESULT(vkBindBufferMemory(device, vertices.buffer, vertices.memory, 0));
 
-        // Index buffer
-
-        auto indexbufferInfo = initializers::bufferCreateInfo();
-        indexbufferInfo.size = indexBufferSize;
-        indexbufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        // Copy index data to a buffer visible to the host (staging buffer)
-        VK_CHECK_RESULT(vkCreateBuffer(device, &indexbufferInfo, nullptr, &stagingBuffers.indices.buffer));
-        vkGetBufferMemoryRequirements(device, stagingBuffers.indices.buffer, &memReqs);
-        memAlloc.allocationSize = memReqs.size;
-        memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &stagingBuffers.indices.memory));
-        VK_CHECK_RESULT(vkMapMemory(device, stagingBuffers.indices.memory, 0, indexBufferSize, 0, &data));
-        memcpy(data, indexBuffer.data(), indexBufferSize);
-        vkUnmapMemory(device, stagingBuffers.indices.memory);
-        VK_CHECK_RESULT(vkBindBufferMemory(device, stagingBuffers.indices.buffer, stagingBuffers.indices.memory, 0));
-
-        // Create destination buffer with device only visibility
-        indexbufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        VK_CHECK_RESULT(vkCreateBuffer(device, &indexbufferInfo, nullptr, &indices.buffer));
-        vkGetBufferMemoryRequirements(device, indices.buffer, &memReqs);
-        memAlloc.allocationSize = memReqs.size;
-        memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &indices.memory));
-        VK_CHECK_RESULT(vkBindBufferMemory(device, indices.buffer, indices.memory, 0));
-
         //Buffer copies have to be submitted to a queue, so we need a command buffer for them
         //Note: some devices offer a dedicatied transfer queue (with only the transfer bit set ) that may be faster when doing lots of copies
         auto copyCmd = getCommandBuffer(true);
@@ -256,9 +276,6 @@ public:
         // vertex buffer
         copyRegion.size = vertexBufferSize;
         vkCmdCopyBuffer(copyCmd, stagingBuffers.vertices.buffer, vertices.buffer, 1, &copyRegion);
-        // Index buffer
-        copyRegion.size = indexBufferSize;
-        vkCmdCopyBuffer(copyCmd, stagingBuffers.indices.buffer, indices.buffer,	1, &copyRegion);
 
         // Flushing the command buffer will also submit it to the queue and uses a fence to ensure that all commands have been executed before returning
         flushCommandBuffer(copyCmd);
@@ -267,28 +284,28 @@ public:
         // Note: Staging buffer must not be deleted before the copies have been submitted and executed
         vkDestroyBuffer(device, stagingBuffers.vertices.buffer, nullptr);
         vkFreeMemory(device, stagingBuffers.vertices.memory, nullptr);
-        vkDestroyBuffer(device, stagingBuffers.indices.buffer, nullptr);
-        vkFreeMemory(device, stagingBuffers.indices.memory, nullptr);
     }
 
     void setupDescriptorPool()
     {
         // We need to tell the API the number of max. requested descriptors per type
-        VkDescriptorPoolSize typeCounts[1];
+        VkDescriptorPoolSize typeCounts[3];
         // This example only uses one descriptor type (uniform buffer) and only requests one descriptor of this type
         typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         typeCounts[0].descriptorCount = 1;
         // For additional types you need to add new entries in the type count list
         // E.g. for two combined image samplers :
-        // typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        // typeCounts[1].descriptorCount = 2;
+        typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        typeCounts[1].descriptorCount = 1;
+        typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        typeCounts[2].descriptorCount = 1;
 
         // Create the global descriptor pool
         // All descriptors used in this example are allocated from this pool
         VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
         descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptorPoolInfo.pNext = nullptr;
-        descriptorPoolInfo.poolSizeCount = 1;
+        descriptorPoolInfo.poolSizeCount = 3;
         descriptorPoolInfo.pPoolSizes = typeCounts;
         // Set the max. number of descriptor sets that can be requested from this pool (requesting beyond this limit will result in an error)
         descriptorPoolInfo.maxSets = 1;
@@ -303,19 +320,44 @@ public:
         // So every shader binding should map to one descriptor set layout binding
 
         // Binding 0: Uniform buffer (Vertex shader)
-        VkDescriptorSetLayoutBinding layoutBinding = {};
-        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        layoutBinding.descriptorCount = 1;
-        layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        layoutBinding.pImmutableSamplers = nullptr;
+        VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uboLayoutBinding.pImmutableSamplers = nullptr;
 
+        // Binding 1: light map samplers (Fragment shader)
+        VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
+        samplerLayoutBinding.binding = 1;
+        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding.descriptorCount = 1;
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        samplerLayoutBinding.pImmutableSamplers = nullptr;
+
+        // Binding 2: light map samplers (Fragment shader)
+        VkDescriptorSetLayoutBinding samplerLayoutBinding2 = {};
+        samplerLayoutBinding2.binding = 2;
+        samplerLayoutBinding2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding2.descriptorCount = 1;
+        samplerLayoutBinding2.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        samplerLayoutBinding2.pImmutableSamplers = nullptr;
+
+        std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboLayoutBinding, samplerLayoutBinding, samplerLayoutBinding2};
         VkDescriptorSetLayoutCreateInfo descriptorLayout = {};
         descriptorLayout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         descriptorLayout.pNext = nullptr;
-        descriptorLayout.bindingCount = 1;
-        descriptorLayout.pBindings = &layoutBinding;
+        descriptorLayout.bindingCount = 3;
+        descriptorLayout.pBindings = bindings.data();
 
         VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &descriptorSetLayout));
+
+        // Define the push constant range used by the pipeline layout
+		// Note that the spec only requires a minimum of 128 bytes, so for passing larger blocks of data you'd use UBOs or SSBOs
+//		VkPushConstantRange pushConstantRange{};
+//		pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+//		pushConstantRange.offset = 0;
+//		pushConstantRange.size = sizeof(PushConstantData);
 
         // Create the pipeline layout that is used to generate the rendering pipelines that are based on this descriptor set layout
         // In a more complex scenario you would have different pipeline layouts for different descriptor set layouts that could be reused
@@ -324,6 +366,8 @@ public:
         pPipelineLayoutCreateInfo.pNext = nullptr;
         pPipelineLayoutCreateInfo.setLayoutCount = 1;
         pPipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+//        pPipelineLayoutCreateInfo.pushConstantRangeCount  = 1;
+//		pPipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
     }
@@ -343,18 +387,35 @@ public:
         // For every binding point used in a shader there needs to be one
         // descriptor set matching that binding point
 
-        VkWriteDescriptorSet writeDescriptorSet = {};
+        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
         // Binding 0 : Uniform buffer
-        writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet.dstSet = descriptorSet;
-        writeDescriptorSet.descriptorCount = 1;
-        writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet.pBufferInfo = &uniformBufferVS.descriptor;
-        // Binds this uniform buffer to binding point 0
-        writeDescriptorSet.dstBinding = 0;
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = descriptorSet;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].pBufferInfo = &uniformBufferVS.descriptor;
+        descriptorWrites[0].dstBinding = 0;
 
-        vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
+        // Binding 1: diffuse
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = descriptorSet;
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &lightMap.diffuseMap.descriptor;
+
+        // Binding 2: specular
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = descriptorSet;
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pImageInfo = &lightMap.specularMap.descriptor;
+
+        vkUpdateDescriptorSets(device, 3, descriptorWrites.data(), 0, nullptr);
     }
 
     void preparePipelines()
@@ -451,7 +512,7 @@ public:
         vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         // Input attribute bindings describe shader attribute locations and memory layouts
-        std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributs;
+        std::array<VkVertexInputAttributeDescription, 3> vertexInputAttributs;
         // These match the following shader layout (see triangle.vert):
         //	layout (location = 0) in vec3 inPos;
         //	layout (location = 1) in vec3 inColor;
@@ -466,14 +527,19 @@ public:
         vertexInputAttributs[1].location = 1;
         // Color attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
         vertexInputAttributs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertexInputAttributs[1].offset = offsetof(Vertex, color);
+        vertexInputAttributs[1].offset = offsetof(Vertex, normal);
+
+        vertexInputAttributs[2].binding = 0;
+        vertexInputAttributs[2].location = 2;
+        vertexInputAttributs[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        vertexInputAttributs[2].offset = offsetof(Vertex, texCoords);
 
         // Vertex input state used for pipeline creation
         VkPipelineVertexInputStateCreateInfo vertexInputState = {};
         vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInputState.vertexBindingDescriptionCount = 1;
         vertexInputState.pVertexBindingDescriptions = &vertexInputBinding;
-        vertexInputState.vertexAttributeDescriptionCount = 2;
+        vertexInputState.vertexAttributeDescriptionCount = 3;
         vertexInputState.pVertexAttributeDescriptions = vertexInputAttributs.data();
 
         // Shaders
@@ -484,7 +550,7 @@ public:
         // Set pipeline stage for this shader
         shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         // Load binary SPIR-V shader
-        shaderStages[0].module = tools::loadShader((getShadersPath() + "triangle/triangle.vert.spv").c_str(), device);
+        shaderStages[0].module = tools::loadShader((getShadersPath() + "triangle/cube.vert.spv").c_str(), device);
         // Main entry point for the shader
         shaderStages[0].pName = "main";
         assert(shaderStages[0].module != VK_NULL_HANDLE);
@@ -494,7 +560,7 @@ public:
         // Set pipeline stage for this shader
         shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         // Load binary SPIR-V shader
-        shaderStages[1].module = tools::loadShader((getShadersPath() + "triangle/triangle.frag.spv").c_str(), device);
+        shaderStages[1].module = tools::loadShader((getShadersPath() + "triangle/cube.frag.spv").c_str(), device);
         // Main entry point for the shader
         shaderStages[1].pName = "main";
         assert(shaderStages[1].module != VK_NULL_HANDLE);
@@ -577,6 +643,12 @@ public:
         // Unmap after data has been copied
         // Note: Since we requested a host coherent memory type for the uniform buffer, the write is instantly visible to the GPU
         vkUnmapMemory(device, uniformBufferVS.memory);
+
+//        pushConstantData.position = lightPos;
+//        pushConstantData.viewPos = camera.position;
+//        pushConstantData.ambient = glm::vec3(.2f);
+//        pushConstantData.diffuse = glm::vec3(.5f);
+//        pushConstantData.specular = glm::vec3(1.0f);
     }
 
     // BUild separate command buffers for every framebuffer image
@@ -645,10 +717,13 @@ public:
             vkCmdBindVertexBuffers(drawCmdBuffers[i], 0, 1, &vertices.buffer, offsets);
 
             // Bind triangle index buffer
-            vkCmdBindIndexBuffer(drawCmdBuffers[i], indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+            // vkCmdBindIndexBuffer(drawCmdBuffers[i], indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+//            vkCmdPushConstants(drawCmdBuffers[i],pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantData), &pushConstantData);
 
             // Draw indexed triangle
-            vkCmdDrawIndexed(drawCmdBuffers[i], indices.count, 1, 0, 0, 1);
+            // vkCmdDrawIndexed(drawCmdBuffers[i], indices.count, 1, 0, 0, 1);
+            vkCmdDraw(drawCmdBuffers[i], vertices.count, 1, 0, 0);
 
             // Draw UIOverlay
             drawUI(drawCmdBuffers[i]);
@@ -665,6 +740,7 @@ public:
     void prepare()
     {
         VulkanExampleBase::prepare();
+        loadAssets();
         prepareVertices();
         prepareUniformBuffers();
         setupDescriptorSetLayout();

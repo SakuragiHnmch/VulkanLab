@@ -52,8 +52,6 @@ void Texture2D::loadFromFile(std::string filename, VkFormat format, VulkanDevice
     VkDeviceSize bufferSize = width * height * 4;
     mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
-    format = VK_FORMAT_R8G8B8A8_UNORM;
-
     VkFormatProperties formatProperties;
 
     mipLevels = static_cast<uint32_t>(floor(log2(std::max(width, height))) + 1.0);
