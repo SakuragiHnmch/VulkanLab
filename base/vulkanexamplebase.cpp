@@ -393,11 +393,12 @@ void VulkanExampleBase::mouseButtonCallback(int button, int action)
 
 void VulkanExampleBase::nextFrame()
 {
-    if (viewUpdated) {
-        viewUpdated = false;
-        viewChanged();
-    }
+//    if (viewUpdated) {
+//        viewUpdated = false;
+//        viewChanged();
+//    }
 
+    viewChanged();
     render();
     frameCounter++;
     auto tEnd = std::chrono::high_resolution_clock::now();

@@ -43,18 +43,24 @@ public:
     } uniformBufferVS;
 
     struct {
+        VkDeviceMemory memory;
+        VkBuffer buffer;
+        VkDescriptorBufferInfo descriptor;
+    } uniformBufferFS;
+
+    struct {
         glm::mat4 projectionMatrix;
         glm::mat4 modelMatrix;
         glm::mat4 viewMatrix;
     } uboVS;
 
-    struct PushConstantData {
+    struct {
         glm::vec3 position;
         glm::vec3 viewPos;
         glm::vec3 ambient;
         glm::vec3 diffuse;
         glm::vec3 specular;
-    } pushConstantData;
+    } uboFS;
 
     struct LightMap {
         Texture2D diffuseMap;
@@ -64,7 +70,7 @@ public:
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
     VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSet descriptorSet;\
+    VkDescriptorSet descriptorSet;
 
     glm::vec3 lightPos = glm::vec3(.2f, 1.0f, 2.0f);
 
@@ -93,6 +99,9 @@ public:
 
         vkDestroyBuffer(device, uniformBufferVS.buffer, nullptr);
         vkFreeMemory(device, uniformBufferVS.memory, nullptr);
+
+        vkDestroyBuffer(device, uniformBufferFS.buffer, nullptr);
+        vkFreeMemory(device, uniformBufferFS.memory, nullptr);
     }
 
     void loadAssets()
@@ -289,7 +298,7 @@ public:
     void setupDescriptorPool()
     {
         // We need to tell the API the number of max. requested descriptors per type
-        VkDescriptorPoolSize typeCounts[3];
+        VkDescriptorPoolSize typeCounts[4];
         // This example only uses one descriptor type (uniform buffer) and only requests one descriptor of this type
         typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         typeCounts[0].descriptorCount = 1;
@@ -299,13 +308,15 @@ public:
         typeCounts[1].descriptorCount = 1;
         typeCounts[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         typeCounts[2].descriptorCount = 1;
+        typeCounts[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        typeCounts[3].descriptorCount = 1;
 
         // Create the global descriptor pool
         // All descriptors used in this example are allocated from this pool
         VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
         descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptorPoolInfo.pNext = nullptr;
-        descriptorPoolInfo.poolSizeCount = 3;
+        descriptorPoolInfo.poolSizeCount = 4;
         descriptorPoolInfo.pPoolSizes = typeCounts;
         // Set the max. number of descriptor sets that can be requested from this pool (requesting beyond this limit will result in an error)
         descriptorPoolInfo.maxSets = 1;
@@ -343,21 +354,21 @@ public:
         samplerLayoutBinding2.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         samplerLayoutBinding2.pImmutableSamplers = nullptr;
 
-        std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboLayoutBinding, samplerLayoutBinding, samplerLayoutBinding2};
+        VkDescriptorSetLayoutBinding uboFSLayoutBinding = {};
+        uboFSLayoutBinding.binding = 3;
+        uboFSLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboFSLayoutBinding.descriptorCount = 1;
+        uboFSLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        uboFSLayoutBinding.pImmutableSamplers = nullptr;
+
+        std::array<VkDescriptorSetLayoutBinding, 4> bindings = {uboLayoutBinding, samplerLayoutBinding, samplerLayoutBinding2, uboFSLayoutBinding};
         VkDescriptorSetLayoutCreateInfo descriptorLayout = {};
         descriptorLayout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         descriptorLayout.pNext = nullptr;
-        descriptorLayout.bindingCount = 3;
+        descriptorLayout.bindingCount = 4;
         descriptorLayout.pBindings = bindings.data();
 
         VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &descriptorSetLayout));
-
-        // Define the push constant range used by the pipeline layout
-		// Note that the spec only requires a minimum of 128 bytes, so for passing larger blocks of data you'd use UBOs or SSBOs
-//		VkPushConstantRange pushConstantRange{};
-//		pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-//		pushConstantRange.offset = 0;
-//		pushConstantRange.size = sizeof(PushConstantData);
 
         // Create the pipeline layout that is used to generate the rendering pipelines that are based on this descriptor set layout
         // In a more complex scenario you would have different pipeline layouts for different descriptor set layouts that could be reused
@@ -366,8 +377,6 @@ public:
         pPipelineLayoutCreateInfo.pNext = nullptr;
         pPipelineLayoutCreateInfo.setLayoutCount = 1;
         pPipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
-//        pPipelineLayoutCreateInfo.pushConstantRangeCount  = 1;
-//		pPipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
     }
@@ -387,7 +396,7 @@ public:
         // For every binding point used in a shader there needs to be one
         // descriptor set matching that binding point
 
-        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 
         // Binding 0 : Uniform buffer
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -415,7 +424,15 @@ public:
         descriptorWrites[2].descriptorCount = 1;
         descriptorWrites[2].pImageInfo = &lightMap.specularMap.descriptor;
 
-        vkUpdateDescriptorSets(device, 3, descriptorWrites.data(), 0, nullptr);
+        // Binding 3 : Uniform buffer
+        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[3].dstSet = descriptorSet;
+        descriptorWrites[3].descriptorCount = 1;
+        descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[3].pBufferInfo = &uniformBufferFS.descriptor;
+        descriptorWrites[3].dstBinding = 3;
+
+        vkUpdateDescriptorSets(device, 4, descriptorWrites.data(), 0, nullptr);
     }
 
     void preparePipelines()
@@ -626,6 +643,18 @@ public:
         uniformBufferVS.descriptor.offset = 0;
         uniformBufferVS.descriptor.range = sizeof(uboVS);
 
+        bufferInfo.size = sizeof(uboFS);
+        VK_CHECK_RESULT(vkCreateBuffer(device, &bufferInfo, nullptr, &uniformBufferFS.buffer));
+        vkGetBufferMemoryRequirements(device, uniformBufferFS.buffer, &memReqs);
+        allocInfo.allocationSize = memReqs.size;
+        allocInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &(uniformBufferFS.memory)));
+        VK_CHECK_RESULT(vkBindBufferMemory(device, uniformBufferFS.buffer, uniformBufferFS.memory, 0));
+
+        uniformBufferFS.descriptor.buffer = uniformBufferFS.buffer;
+        uniformBufferFS.descriptor.offset = 0;
+        uniformBufferFS.descriptor.range = sizeof(uboFS);
+
         updateUniformBuffers();
     }
 
@@ -644,11 +673,18 @@ public:
         // Note: Since we requested a host coherent memory type for the uniform buffer, the write is instantly visible to the GPU
         vkUnmapMemory(device, uniformBufferVS.memory);
 
-//        pushConstantData.position = lightPos;
-//        pushConstantData.viewPos = camera.position;
-//        pushConstantData.ambient = glm::vec3(.2f);
-//        pushConstantData.diffuse = glm::vec3(.5f);
-//        pushConstantData.specular = glm::vec3(1.0f);
+        lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
+        lightPos.y = sin(glfwGetTime() / 2.0f) * 1.0f;
+
+        uboFS.position = lightPos;
+        uboFS.viewPos = camera.position;
+        uboFS.ambient = glm::vec3(.2f);
+        uboFS.diffuse = glm::vec3(.5f);
+        uboFS.specular = glm::vec3(1.0f);
+
+        VK_CHECK_RESULT(vkMapMemory(device, uniformBufferFS.memory, 0, sizeof(uboFS), 0, (void**)&pData));
+        memcpy(pData, &uboFS, sizeof(uboFS));
+        vkUnmapMemory(device, uniformBufferFS.memory);
     }
 
     // BUild separate command buffers for every framebuffer image
@@ -716,10 +752,6 @@ public:
             VkDeviceSize offsets[1] = { 0 };
             vkCmdBindVertexBuffers(drawCmdBuffers[i], 0, 1, &vertices.buffer, offsets);
 
-            // Bind triangle index buffer
-            // vkCmdBindIndexBuffer(drawCmdBuffers[i], indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-//            vkCmdPushConstants(drawCmdBuffers[i],pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantData), &pushConstantData);
 
             // Draw indexed triangle
             // vkCmdDrawIndexed(drawCmdBuffers[i], indices.count, 1, 0, 0, 1);
