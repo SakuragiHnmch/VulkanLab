@@ -14,12 +14,12 @@
 #include <vulkan/vulkan.h>
 #include "vulkanexamplebase.h"
 
-#define ENABLE_VALIDATION false
+#define ENABLE_VALIDATION true
 // Set to "true" to use staging buffers for uploading vertex and index data to device local memory
 // See "prepareVertices" for details on what's staging and on why to use it
 #define USE_STAGING true
 
-class VulkanExample : public VulkanExampleBase {
+class TexturedCube : public VulkanExampleBase {
 public:
     // Vertex layout
     struct Vertex {
@@ -55,11 +55,11 @@ public:
     } uboVS;
 
     struct {
-        glm::vec3 position;
-        glm::vec3 viewPos;
-        glm::vec3 ambient;
-        glm::vec3 diffuse;
-        glm::vec3 specular;
+        glm::vec4 position;
+        glm::vec4 viewPos;
+        glm::vec4 ambient;
+        glm::vec4 diffuse;
+        glm::vec4 specular;
     } uboFS;
 
     struct LightMap {
@@ -72,9 +72,9 @@ public:
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSet descriptorSet;
 
-    glm::vec3 lightPos = glm::vec3(.2f, 1.0f, 2.0f);
+    glm::vec4 lightPos = glm::vec4(.2f, 1.0f, 2.0f, 1.0f);
 
-    VulkanExample() : VulkanExampleBase(ENABLE_VALIDATION)
+    TexturedCube() : VulkanExampleBase(ENABLE_VALIDATION)
     {
         title = "Vulkan Example - Basic indexed triangle";
         // Setup a default look-at camera
@@ -85,7 +85,7 @@ public:
         // Values not set here are initialized in the base class constructor
     }
 
-    ~VulkanExample()
+    ~TexturedCube()
     {
         // Clean up used Vulkan resources
         // Note: Inherited destructor cleans up resources stored in base class
@@ -548,7 +548,7 @@ public:
 
         vertexInputAttributs[2].binding = 0;
         vertexInputAttributs[2].location = 2;
-        vertexInputAttributs[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        vertexInputAttributs[2].format = VK_FORMAT_R32G32_SFLOAT;
         vertexInputAttributs[2].offset = offsetof(Vertex, texCoords);
 
         // Vertex input state used for pipeline creation
@@ -567,7 +567,7 @@ public:
         // Set pipeline stage for this shader
         shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         // Load binary SPIR-V shader
-        shaderStages[0].module = tools::loadShader((getShadersPath() + "triangle/cube.vert.spv").c_str(), device);
+        shaderStages[0].module = tools::loadShader((getShadersPath() + "TexturedCube/cube.vert.spv").c_str(), device);
         // Main entry point for the shader
         shaderStages[0].pName = "main";
         assert(shaderStages[0].module != VK_NULL_HANDLE);
@@ -577,7 +577,7 @@ public:
         // Set pipeline stage for this shader
         shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         // Load binary SPIR-V shader
-        shaderStages[1].module = tools::loadShader((getShadersPath() + "triangle/cube.frag.spv").c_str(), device);
+        shaderStages[1].module = tools::loadShader((getShadersPath() + "TexturedCube/cube.frag.spv").c_str(), device);
         // Main entry point for the shader
         shaderStages[1].pName = "main";
         assert(shaderStages[1].module != VK_NULL_HANDLE);
@@ -677,10 +677,10 @@ public:
         lightPos.y = sin(glfwGetTime() / 2.0f) * 1.0f;
 
         uboFS.position = lightPos;
-        uboFS.viewPos = camera.position;
-        uboFS.ambient = glm::vec3(.2f);
-        uboFS.diffuse = glm::vec3(.5f);
-        uboFS.specular = glm::vec3(1.0f);
+        uboFS.viewPos = glm::vec4(camera.position, 1.0f);
+        uboFS.ambient = glm::vec4(.2f);
+        uboFS.diffuse = glm::vec4(.5f);
+        uboFS.specular = glm::vec4(1.0f);
 
         VK_CHECK_RESULT(vkMapMemory(device, uniformBufferFS.memory, 0, sizeof(uboFS), 0, (void**)&pData));
         memcpy(pData, &uboFS, sizeof(uboFS));
@@ -779,16 +779,30 @@ public:
         preparePipelines();
         setupDescriptorPool();
         setupDescriptorSet();
-        buildCommandBuffers();
+        // buildCommandBuffers();
         prepared = true;
     }
 
     void draw()
     {
         VulkanExampleBase::prepareFrame();
+
+        // Use a fence to wait until the command buffer has finished execution before using it again
+        VK_CHECK_RESULT(vkWaitForFences(device, 1, &waitFences[currentBuffer], VK_TRUE, UINT64_MAX));
+        VK_CHECK_RESULT(vkResetFences(device, 1, &waitFences[currentBuffer]));
+
+        VkPipelineStageFlags waitStageMask[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+        VkSubmitInfo submitInfo {};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.pWaitDstStageMask = waitStageMask;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &drawCmdBuffers[currentBuffer];
-        VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &semaphores.presentComplete;
+        submitInfo.pSignalSemaphores = &semaphores.renderComplete;
+        VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, waitFences[currentBuffer]));
         VulkanExampleBase::presentFrame();
     }
 
@@ -796,6 +810,7 @@ public:
     {
         if (!prepared)
             return;
+        buildCommandBuffers();
         draw();
     }
 
@@ -806,4 +821,19 @@ public:
     }
 };
 
-VULKAN_EXAMPLE_MAIN()
+int main(const int argc, const char *argv[])
+{
+
+    for (size_t i = 0; i < argc; i++) {
+        TexturedCube::args.push_back(argv[i]);
+    };
+
+    TexturedCube* app = new TexturedCube();
+    app->setupWindow();
+    app->initVulkan();
+    app->prepare();
+    app->renderLoop();
+    delete(app);
+
+	return 0;
+}

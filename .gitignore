@@ -2,3 +2,5 @@
 /**/cmake-build-debug
 /**/.idea
 /**/3rd/VulkanSDK
+/**/3rd/glfw-3.3.6
+/**/build

@@ -23,11 +23,8 @@ else()
     message(STATUS ${Vulkan_LIBRARY})
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
 
 set(CMAKE_CXX_FLAGS "-DVK_USE_PLATFORM_MACOS_MVK")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOMINMAX -D_USE_MATH_DEFINES")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc -xobjective-c++")
 
 # Clang specific stuff
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
