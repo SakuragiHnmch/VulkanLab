@@ -76,7 +76,7 @@ public:
 
     TexturedCube() : VulkanExampleBase(ENABLE_VALIDATION)
     {
-        title = "Vulkan Example - Basic indexed triangle";
+        title = "Vulkan Example - Textured Cube";
         // Setup a default look-at camera
         camera.type = Camera::CameraType::lookat;
         camera.setPosition(glm::vec3(0.0f, 0.0f, -2.5f));
