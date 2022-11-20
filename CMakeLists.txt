@@ -10,6 +10,7 @@ include_directories(3rd/imgui)
 include_directories(3rd/tinygltf)
 include_directories(3rd/stb_image)
 include_directories(3rd/glfw-3.3.6/include)
+include_directories(3rd/tinyobj)
 include_directories(base)
 
 if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)

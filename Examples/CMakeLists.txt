@@ -9,7 +9,7 @@ function(buildExample EXAMPLE_NAME)
         SET(SOURCE ${SOURCE} ${ADD_SOURCE})
     ENDIF()
     # Add shaders
-	set(SHADER_DIR_GLSL "../data/shaders/glsl/${EXAMPLE_NAME}")
+	set(SHADER_DIR_GLSL "../data/shaders/${EXAMPLE_NAME}")
 	file(GLOB SHADERS_GLSL "${SHADER_DIR_GLSL}/*.vert" "${SHADER_DIR_GLSL}/*.frag" "${SHADER_DIR_GLSL}/*.comp" "${SHADER_DIR_GLSL}/*.geom" "${SHADER_DIR_GLSL}/*.tesc" "${SHADER_DIR_GLSL}/*.tese" "${SHADER_DIR_GLSL}/*.mesh" "${SHADER_DIR_GLSL}/*.task" "${SHADER_DIR_GLSL}/*.rgen" "${SHADER_DIR_GLSL}/*.rchit" "${SHADER_DIR_GLSL}/*.rmiss" "${SHADER_DIR_GLSL}/*.rcall")
 	source_group("Shaders\\GLSL" FILES ${SHADERS_GLSL})
 
@@ -25,6 +25,7 @@ endfunction(buildExamples)
 
 set(EXAMPLES
     TexturedCube
+    Shadow
 )
 
 buildExamples()
