@@ -204,7 +204,7 @@ void Texture2D::loadFromFile(std::string filename, VkFormat format, VulkanDevice
     }
 
     subresourceRange.levelCount = mipLevels;
-    imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    this->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     {
         VkImageMemoryBarrier imageMemoryBarrier{};
@@ -236,7 +236,7 @@ void Texture2D::loadFromFile(std::string filename, VkFormat format, VulkanDevice
 	samplerInfo.anisotropyEnable = VK_FALSE;
 	samplerInfo.maxLod = (float)mipLevels;
 	samplerInfo.maxAnisotropy = 8.0f;
-	samplerInfo.anisotropyEnable = VK_TRUE;
+//	samplerInfo.anisotropyEnable = VK_TRUE;
 	VK_CHECK_RESULT(vkCreateSampler(device->logicalDevice, &samplerInfo, nullptr, &sampler));
 
 	VkImageViewCreateInfo viewInfo{};

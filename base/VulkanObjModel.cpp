@@ -293,7 +293,7 @@ void ObjModel::LoadModelFromFile(std::string filename, VulkanDevice* device, VkQ
             write1.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             write1.descriptorCount = 1;
             write1.dstSet = part.material_descriptor_set;
-            write1.dstBinding = 0;
+            write1.dstBinding = 1;
             write1.pImageInfo = &part.albedo_map->descriptor;
             writes.emplace_back(write1);
 
@@ -306,7 +306,7 @@ void ObjModel::LoadModelFromFile(std::string filename, VulkanDevice* device, VkQ
             write2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             write2.descriptorCount = 1;
             write2.dstSet = part.material_descriptor_set;
-            write2.dstBinding = 0;
+            write2.dstBinding = 2;
             write2.pImageInfo = &part.normal_map->descriptor;
             writes.emplace_back(write2);
 

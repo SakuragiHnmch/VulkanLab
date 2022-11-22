@@ -2,7 +2,7 @@
 
 const std::string getAssetPath()
 {
-    return "../../data/";
+    return "../../../data/";
 }
 
 namespace tools

@@ -15,7 +15,7 @@ public:
     VkDescriptorSet descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
 
-    glm::vec4 lightPos = glm::vec4(1.0f, 4.0f, 0.0f, 0.0f);
+    glm::vec4 lightPos = glm::vec4(250.0f, 250.0f, 250.0f, 0.0f);
 
     Buffer bufferVS;
 
@@ -25,6 +25,7 @@ public:
         glm::mat4 normal;
         glm::mat4 view;
         glm::vec4 lightPos;
+        glm::vec4 cameraPos;
     } uboVS;
 
     VkPipeline objPipeline;
@@ -34,7 +35,7 @@ public:
         title = "Games 202 - Shadow";
         camera.type = Camera::CameraType::lookat;
         //camera.flipY = true;
-        camera.setPosition(glm::vec3(0.0f, 0.0f, -3.75f));
+        camera.setPosition(glm::vec3(-20.0f, 180.0f, 250.f));
         camera.setRotation(glm::vec3(15.0f, 0.0f, 0.0f));
         camera.setRotationSpeed(0.5f);
         camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 256.0f);
@@ -58,10 +59,10 @@ public:
 
     void loadAssets()
     {
-        std::vector<std::string> modelFiles = { "floor", "Marry" };
+        std::vector<std::string> modelFiles = { "Marry" };
         for (auto i = 0; i < modelFiles.size(); i++) {
             auto* model = new ObjModel();
-            model->LoadModelFromFile(getAssetPath() + "models/" + modelFiles[i] + modelFiles[i] + ".obj", vulkanDevice, queue);
+            model->LoadModelFromFile(getAssetPath() + "models/Shadow/" + modelFiles[i] + "/" + modelFiles[i] + ".obj", vulkanDevice, queue);
             demoModels.push_back(model);
         }
     }
@@ -212,8 +213,8 @@ public:
         pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
 
         // Default mesh rendering pipeline
-        shaderStages[0] = loadShader(getShadersPath() + "Shadow/mesh.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-        shaderStages[1] = loadShader(getShadersPath() + "Shadow/mesh.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+        shaderStages[0] = loadShader(getShadersPath() + "Shadow/phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+        shaderStages[1] = loadShader(getShadersPath() + "Shadow/phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
         VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &objPipeline));
     }
 
@@ -233,9 +234,10 @@ public:
     {
         uboVS.projection = camera.matrices.perspective;
         uboVS.view = camera.matrices.view;
-        uboVS.model = glm::mat4(1.0f);
-        uboVS.normal = glm::inverseTranspose(uboVS.view * uboVS.model);
+        uboVS.model = glm::mat4(52.0f);
+        uboVS.normal = glm::inverseTranspose(uboVS.model);
         uboVS.lightPos = lightPos;
+        uboVS.cameraPos = glm::vec4(camera.position, 1.0);
         memcpy(bufferVS.mapped, &uboVS, sizeof(uboVS));
     }
 
@@ -274,3 +276,20 @@ public:
     }
 
 };
+
+int main(const int argc, const char *argv[])
+{
+
+    for (size_t i = 0; i < argc; i++) {
+        Shadow::args.push_back(argv[i]);
+    };
+
+    Shadow* app = new Shadow();
+    app->setupWindow();
+    app->initVulkan();
+    app->prepare();
+    app->renderLoop();
+    delete(app);
+
+    return 0;
+}
