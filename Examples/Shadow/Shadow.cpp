@@ -5,7 +5,7 @@
 #include <vulkanexamplebase.h>
 #include <VulkanObjModel.h>
 
-#define ENABLE_VALIDATION true
+#define ENABLE_VALIDATION false
 
 class Shadow : public VulkanExampleBase {
 public:
@@ -15,7 +15,7 @@ public:
     VkDescriptorSet descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
 
-    glm::vec4 lightPos = glm::vec4(250.0f, 250.0f, 250.0f, 0.0f);
+    glm::vec4 lightPos = glm::vec4(25.0f, 25.0f, 25.0f, 1.0f);
 
     Buffer bufferVS;
 
@@ -35,10 +35,10 @@ public:
         title = "Games 202 - Shadow";
         camera.type = Camera::CameraType::lookat;
         //camera.flipY = true;
-        camera.setPosition(glm::vec3(-20.0f, 180.0f, 250.f));
-        camera.setRotation(glm::vec3(15.0f, 0.0f, 0.0f));
+        camera.setPosition(glm::vec3(0.0f, -3.5f, -4.0f));
+        camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
         camera.setRotationSpeed(0.5f);
-        camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 256.0f);
+        camera.setPerspective(75.0f, (float)width / (float)height, 0.1f, 1000.0f);
     }
 
     ~Shadow()
@@ -59,9 +59,9 @@ public:
 
     void loadAssets()
     {
-        std::vector<std::string> modelFiles = { "Marry" };
+        std::vector<std::string> modelFiles = { "floor", "Marry" };
         for (auto i = 0; i < modelFiles.size(); i++) {
-            auto* model = new ObjModel();
+            auto* model = new ObjModel(vulkanDevice);
             model->LoadModelFromFile(getAssetPath() + "models/Shadow/" + modelFiles[i] + "/" + modelFiles[i] + ".obj", vulkanDevice, queue);
             demoModels.push_back(model);
         }
@@ -98,10 +98,12 @@ public:
             VkRect2D scissor = initializers::rect2D(width, height, 0, 0);
             vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-            vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 
             for (auto model : demoModels) {
                 vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipeline);
+                
+                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, NULL);
+                
                 model->Draw(drawCmdBuffers[i], pipelineLayout);
             }
 
@@ -234,7 +236,7 @@ public:
     {
         uboVS.projection = camera.matrices.perspective;
         uboVS.view = camera.matrices.view;
-        uboVS.model = glm::mat4(52.0f);
+        uboVS.model = glm::mat4(1.0f);
         uboVS.normal = glm::inverseTranspose(uboVS.model);
         uboVS.lightPos = lightPos;
         uboVS.cameraPos = glm::vec4(camera.position, 1.0);

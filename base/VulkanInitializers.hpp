@@ -44,6 +44,7 @@ namespace initializers
     {
         VkCommandBufferBeginInfo cmdBufferBeginInfo {};
         cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         return cmdBufferBeginInfo;
     }
 

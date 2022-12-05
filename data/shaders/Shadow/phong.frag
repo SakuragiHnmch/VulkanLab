@@ -69,16 +69,9 @@ void main()
 	vec3 halfVec = normalize(inLightVec + Eye);
 	float diff = clamp(dot(inLightVec, normal), 0.0, 1.0);
 	float spec = specpart(inLightVec, normal, halfVec);
-	float intensity = 0.1 + diff + spec;
 
 	float shininess = 0.75;
 	vec4 ISpecular = vec4(0.5, 0.5, 0.5, 1.0) * pow(max(dot(Reflected, Eye), 0.0), 2.0) * shininess; 
 
-	outFragColor = vec4((IAmbient + IDiffuse) * vec4(inColor, 1.0) + ISpecular);
- 
-	// Some manual saturation
-	// if (intensity > 0.95)
-	//	outFragColor *= 2.25;
-	// if (intensity < 0.15)
-	//	outFragColor = vec4(0.1);
+	outFragColor = vec4((IAmbient + IDiffuse) + ISpecular);
 }

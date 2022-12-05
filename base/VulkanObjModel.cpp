@@ -122,6 +122,41 @@ std::vector<MeshMaterialGroup> LoadModel(const std::string path)
     return groups;
 }
 
+ObjModel::ObjModel(VulkanDevice* device) : device(device) {}
+
+ObjModel::~ObjModel()
+{
+    if (buffer)
+    {
+        vkDestroyBuffer(device->logicalDevice, buffer, nullptr);
+    }
+    if (buffer_memory)
+    {
+        vkFreeMemory(device->logicalDevice, buffer_memory, nullptr);
+    }
+    if (uniform_buffer)
+    {
+        vkDestroyBuffer(device->logicalDevice, uniform_buffer, nullptr);
+    }
+    if (uniform_buffer_memory)
+    {
+        vkFreeMemory(device->logicalDevice, uniform_buffer_memory, nullptr);
+    }
+    if (material_descriptor_set_layout)
+    {
+        vkDestroyDescriptorSetLayout(device->logicalDevice, material_descriptor_set_layout, nullptr);
+    }
+    if (descriptorPool)
+    {
+        vkDestroyDescriptorPool(device->logicalDevice, descriptorPool, nullptr);
+    }
+
+    for (auto& part : mesh_parts)
+    {
+        part.destroy();
+    }
+}
+
 /**
  *  Load Obj model and allocate vulkan resources
  */

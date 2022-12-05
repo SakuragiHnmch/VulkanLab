@@ -124,8 +124,8 @@ struct Vertex
 
 class ObjModel {
 public:
-    ObjModel() = default;
-    ~ObjModel() = default;
+    ObjModel(VulkanDevice*);
+    ~ObjModel();
 
     VkDescriptorSetLayout GetDescriptorSetLayout() const {
         return material_descriptor_set_layout;
@@ -140,18 +140,15 @@ public:
     }
 
 private:
+    VulkanDevice* device;
     VkBuffer buffer;
     VkDeviceMemory buffer_memory;
-    std::vector<VkImage> images;
-    std::vector<VkImageView> imageViews;
-    std::vector<VkDeviceMemory> image_memories;
     VkBuffer uniform_buffer;
     VkDeviceMemory uniform_buffer_memory;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout material_descriptor_set_layout = VK_NULL_HANDLE;
 
     std::vector<MeshPart> mesh_parts;
-    std::vector<Texture2D> textures;
 };
 
 #endif //LEARN_VULKAN_VULKANOBJMODEL_H
