@@ -77,8 +77,8 @@ void main()
 	outFragColor = vec4((IAmbient + IDiffuse) * vec4(inColor, 1.0) + ISpecular);
  
 	// Some manual saturation
-	if (intensity > 0.95)
-		outFragColor *= 2.25;
-	if (intensity < 0.15)
-		outFragColor = vec4(0.1);
+	// if (intensity > 0.95)
+	//	outFragColor *= 2.25;
+	// if (intensity < 0.15)
+	//	outFragColor = vec4(0.1);
 }

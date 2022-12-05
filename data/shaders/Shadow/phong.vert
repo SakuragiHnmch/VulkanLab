@@ -26,6 +26,7 @@ layout (location = 5) out vec3 outColor;
 void main() 
 {
 	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos, 1.0);
+    gl_Position.y = -gl_Position.y;
 
 	outUV = inTexCoord.st;
 	outNormal = normalize(mat3(ubo.normal) * inNormal);
