@@ -324,22 +324,22 @@ public:
                 scissor = initializers::rect2D(width, height, 0, 0);
                 vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-                if (displayShadowMap) {
-                    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0,
-                                            nullptr);
-                    vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, debugPipeline);
-                    vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
-
-                }
-
-//                vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipeline);
+//                if (displayShadowMap) {
+//                    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0,
+//                                            nullptr);
+//                    vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, debugPipeline);
+//                    vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
 //
-//                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
-//                                        &descriptorSets.scene, 0, NULL);
-//
-//                for (auto model: demoModels) {
-//                    model->Draw(drawCmdBuffers[i], pipelineLayout);
 //                }
+
+                vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipeline);
+
+                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+                                        &descriptorSets.scene, 0, NULL);
+
+                for (auto model: demoModels) {
+                    model->Draw(drawCmdBuffers[i], pipelineLayout);
+                }
 
                 drawUI(drawCmdBuffers[i]);
 
@@ -544,9 +544,9 @@ public:
     void updateUniformBuffers()
     {
         // Animate the light source
-        lightPos.x = cos(glm::radians(timer * 360.0f)) * 40.0f;
-        lightPos.y = -50.0f + sin(glm::radians(timer * 360.0f)) * 20.0f;
-        lightPos.z = 25.0f + sin(glm::radians(timer * 360.0f)) * 5.0f;
+        lightPos.x = -cos(glm::radians(timer * 360.0f)) * 20.0f;
+        lightPos.y = 25.0f + sin(glm::radians(timer * 360.0f)) * 10.0f;
+        lightPos.z = -12.5f + sin(glm::radians(timer * 360.0f)) * 2.5f;
 
         // Matrix from light's point of view
         glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, zNear, zFar);

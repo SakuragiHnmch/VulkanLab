@@ -92,6 +92,5 @@ void main()
 	vec3 ISpecular = vec3(0.5) * pow(max(dot(Reflected, Eye), 0.0), 2.0) * shininess;
 
     float shadow = ShadowCalculation(lightSpaceFragPos);
-	//outFragColor = vec4((IAmbient + (IDiffuse + ISpecular)), 1.0);
-    outFragColor = vec4(shadow, shadow, shadow, 1.0);
+	outFragColor = vec4((IAmbient + (1.0 - shadow) * (IDiffuse + ISpecular)), 1.0);
 }
