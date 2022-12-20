@@ -14,5 +14,4 @@ layout (std140, set = 0, binding = 0) uniform UBO
 void main() 
 {
 	gl_Position = ubo.depthMVP * vec4(inPos, 1.0);
-    gl_Position.y = -gl_Position.y;
 }

@@ -12,7 +12,7 @@ public:
     // Keep depth range as small as possible
     // for better shadow map precision
     float zNear = 1.0f;
-    float zFar = 96.0f;
+    float zFar = 256.0f;
 
     // Depth bias (and slope) are used to avoid shadowing artifacts
     // Constant depth bias factor (always applied)
@@ -74,8 +74,8 @@ public:
     {
         title = "Games 202 - Shadow";
         camera.type = Camera::CameraType::firstperson;
-        //camera.flipY = true;
-        camera.setPosition(glm::vec3(0.0f, -3.5f, -4.0f));
+        camera.flipY = true;
+        camera.setPosition(glm::vec3(0.0f, 3.5f, -5.0f));
         camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
         camera.setRotationSpeed(0.5f);
         camera.setPerspective(75.0f, (float)width / (float)height, 1.0f, 256.0f);
@@ -544,13 +544,13 @@ public:
     void updateUniformBuffers()
     {
         // Animate the light source
-        lightPos.x = -cos(glm::radians(timer * 360.0f)) * 20.0f;
-        lightPos.y = 25.0f + sin(glm::radians(timer * 360.0f)) * 10.0f;
-        lightPos.z = -12.5f + sin(glm::radians(timer * 360.0f)) * 2.5f;
+        lightPos.x = 0.0f;
+        lightPos.y = 3.5f;
+        lightPos.z = 5.0f;
 
         // Matrix from light's point of view
-        glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, zNear, zFar);
-        glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(lightPos.x, lightPos.y, lightPos.z), glm::vec3(0.0f), glm::vec3(0, 1, 0));
+        glm::mat4 depthProjectionMatrix = camera.matrices.perspective;
+        glm::mat4 depthViewMatrix = camera.matrices.view;
         glm::mat4 depthModelMatrix = glm::mat4(1.0f);
         uboOffscreenVS.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
         memcpy(offscreenUBO.mapped, &uboOffscreenVS, sizeof(uboOffscreenVS));
@@ -560,8 +560,8 @@ public:
         uboVS.model = glm::mat4(1.0f);
         uboVS.normal = glm::inverseTranspose(uboVS.model);
         uboVS.depthMVP = uboOffscreenVS.depthMVP;
-        uboVS.lightPos = lightPos;
-        uboVS.cameraPos = glm::vec4(camera.position, 1.0);
+        uboVS.lightPos = camera.viewPos;
+        uboVS.cameraPos = camera.viewPos;
         memcpy(sceneUBO.mapped, &uboVS, sizeof(uboVS));
     }
 

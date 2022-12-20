@@ -23,22 +23,17 @@ layout (location = 0) out vec4 outFragColor;
 
 float ShadowCalculation(vec4 lightspaceFragPos)
 {
-    // perform perspective divide
-    vec3 shadowCoords = lightSpaceFragPos.xyz / lightSpaceFragPos.w;
+    vec3 projCoords = lightSpaceFragPos.xyz / lightSpaceFragPos.w;
+    vec3 shadowCoords = projCoords * 0.5 + 0.5;
 
-    // transform to [0, 1] range
-    shadowCoords = shadowCoords * 0.5 + 0.5;
+    vec4 depth = texture(shadowMap, shadowCoords.xy);
+    vec4 bitShift = vec4(1.0, 1.0/256.0, 1.0/(256.0*256.0), 1.0/(256.0*256.0*256.0));
+    float depthUnpack = dot(depth, bitShift);
 
-    // get closest depth of current frag in shadowMap
-    float closestDepth = texture(shadowMap, shadowCoords.xy).r;
+    if (depthUnpack < shadowCoords.z - 0.005)
+        return 0.0;
 
-    // get depth of current fragment from light`s perspective
-    float currentDepth = shadowCoords.z;
-
-    // check wether current fragment is in shadodw
-    float shadow = currentDepth > closestDepth ? 1.0 : 0.0;
-
-    return shadow;
+    return 1.0;
 }
 
 float specpart(vec3 L, vec3 N, vec3 H)
@@ -73,24 +68,30 @@ void main()
         normal = inNormal;
     }
 
-    vec3 IDiffuse;
+    vec3 mColor;
     if (material.has_albedo_map > 0)
     {
-        IDiffuse = texture(albedo_sampler, inUV).rgb * max(dot(normal, inLightVec), 0.0);
+        mColor = texture(albedo_sampler, inUV).rgb;
     }
     else
     {
-        IDiffuse = vec3(0.5) * max(dot(normal, inLightVec), 0.0);
+        mColor = vec3(0.5);
     }
 
-    vec3 IAmbient = vec3(0.2);
+    vec3 ambient = 0.05 * mColor;
+
+    float diff = max(dot(normal, inLightVec), 0.0);
+    vec3 diffuse = diff * mColor;
 
 	vec3 Eye = normalize(inCameraPos - worldSpaceFragPos.xyz);
 	vec3 Reflected = normalize(reflect(-inLightVec, normal)); 
 
-	float shininess = 0.75;
-	vec3 ISpecular = vec3(0.5) * pow(max(dot(Reflected, Eye), 0.0), 2.0) * shininess;
+	float spec = pow(max(dot(Reflected, Eye), 0.0), 32.0);
+    vec3 specular = spec * vec3(1.0);
 
-    float shadow = ShadowCalculation(lightSpaceFragPos);
-	outFragColor = vec4((IAmbient + (1.0 - shadow) * (IDiffuse + ISpecular)), 1.0);
+    float visibility = 1.0;
+    //visibility = ShadowCalculation(lightSpaceFragPos);
+
+    vec3 radiance = (ambient + diffuse + specular);
+    outFragColor = vec4(radiance * visibility, 1.0);
 }

@@ -27,12 +27,11 @@ layout (location = 5) out vec4 lightSpaceFragPos;
 void main() 
 {
 	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos, 1.0);
-    gl_Position.y = -gl_Position.y;
 
 	outUV = inTexCoord.st;
 	outNormal = normalize(mat3(ubo.normal) * inNormal);
 	outLightPos = ubo.lightPos.xyz;
 	outCameraPos = ubo.cameraPos.xyz;
 	worldSpaceFragPos = ubo.model * vec4(inPos, 1.0);
-    lightSpaceFragPos = ubo.depthMVP * worldSpaceFragPos;
+    lightSpaceFragPos = ubo.depthMVP * vec4(inPos, 1.0);
 }
