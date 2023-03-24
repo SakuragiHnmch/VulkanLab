@@ -156,6 +156,11 @@ ObjModel::~ObjModel()
         vkDestroyDescriptorPool(device->logicalDevice, descriptorPool, nullptr);
     }
 
+    if (default_map) {
+        default_map->destroy();
+        delete default_map;
+    }
+
     for (auto& part : mesh_parts)
     {
         part.destroy();
@@ -168,6 +173,11 @@ ObjModel::~ObjModel()
 void ObjModel::LoadModelFromFile(std::string filename, VulkanDevice* device, VkQueue transferQueue)
 {
     auto groups = LoadModel(filename);
+
+    // Generate 1x1 default map
+    default_map = new Texture2D();
+    std::vector<float> defaultMapData {1.0f, 1.0f, 1.0f, 1.0f};
+    default_map->fromBuffer(defaultMapData.data(), sizeof(uint8_t) * 4, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, device, transferQueue);
 
     VkDeviceSize buffer_size = 0;
     for (const auto& group : groups) {
@@ -327,31 +337,33 @@ void ObjModel::LoadModelFromFile(std::string filename, VulkanDevice* device, VkQ
         write0.pBufferInfo = &bufferInfo;
         writes.emplace_back(write0);
 
+        VkWriteDescriptorSet write1 {};
+        write1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write1.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write1.descriptorCount = 1;
+        write1.dstSet = part.material_descriptor_set;
+        write1.dstBinding = 1;
         if (part.albedo_map) {
-            VkWriteDescriptorSet write1 {};
-            write1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write1.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            write1.descriptorCount = 1;
-            write1.dstSet = part.material_descriptor_set;
-            write1.dstBinding = 1;
             write1.pImageInfo = &part.albedo_map->descriptor;
-            writes.emplace_back(write1);
-
             ubo.has_albedo_map = 1;
+        } else {
+            write1.pImageInfo = &default_map->descriptor;
         }
+        writes.emplace_back(write1);
 
+        VkWriteDescriptorSet write2 {};
+        write2.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write2.descriptorCount = 1;
+        write2.dstSet = part.material_descriptor_set;
+        write2.dstBinding = 2;
         if (part.normal_map) {
-            VkWriteDescriptorSet write2 {};
-            write2.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            write2.descriptorCount = 1;
-            write2.dstSet = part.material_descriptor_set;
-            write2.dstBinding = 2;
             write2.pImageInfo = &part.normal_map->descriptor;
-            writes.emplace_back(write2);
-
             ubo.has_normal_map = 1;
+        } else {
+            write2.pImageInfo = &default_map->descriptor;
         }
+        writes.emplace_back(write2);
 
         vkUpdateDescriptorSets(device->logicalDevice, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
@@ -387,9 +399,9 @@ void ObjModel::Draw(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout)
 
         // 前一个参数first set指的是当前绑定的descriptorSet数组，从第几个set开始（shader中的 set = n），在同一个renderPass里面可以调用多次
         // 比如说，第一次调用vkCmdBindDescriptorSets，绑定了四个descriptorSets，那么第二次调用vkCmdBindDescriptorSets则需要传入firstSet=4（set从0开始计数）
-//        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-//                                1, 1, &part.material_descriptor_set,
-//                                0, nullptr);
+        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+                                1, 1, &part.material_descriptor_set,
+                                0, nullptr);
         vkCmdDrawIndexed(cmdBuffer, part.index_count, 1, 0, 0, 0);
     }
 }

@@ -35,6 +35,7 @@ struct MeshPart {
 
     Texture2D* albedo_map = nullptr;
     Texture2D* normal_map = nullptr;
+    Texture2D* default_map = nullptr;
 
     MeshPart(const BufferSection& vertex_buffer_section, const BufferSection& index_buffer_section, size_t index_count)
         : vertex_buffer_section(vertex_buffer_section)
@@ -147,6 +148,8 @@ private:
     VkDeviceMemory uniform_buffer_memory;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout material_descriptor_set_layout = VK_NULL_HANDLE;
+
+    Texture2D* default_map = nullptr;
 
     std::vector<MeshPart> mesh_parts;
 };

@@ -25,6 +25,8 @@ public:
     VkPipelineLayout pipelineLayout;
     VkDescriptorSetLayout descriptorSetLayout;
 
+    VkPipelineLayout objPipelineLayout;
+
     struct {
         VkDescriptorSet offscreen;
         VkDescriptorSet scene;
@@ -78,7 +80,7 @@ public:
         title = "Games 202 - Shadow";
         camera.type = Camera::CameraType::firstperson;
         camera.flipY = true;
-        camera.setPosition(glm::vec3(0.0f, 6.0f, -10.0f));
+        camera.setPosition(glm::vec3(0.0f, 3.0f, -5.0f));
         camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
         camera.setRotationSpeed(0.5f);
         camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 256.0f);
@@ -296,10 +298,10 @@ public:
                         depthBiasSlope);
 
                 vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, offscreenPipeline);
-                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
+                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
 
                 for (auto model : demoModels) {
-                    model->Draw(drawCmdBuffers[i], pipelineLayout);
+                    model->Draw(drawCmdBuffers[i], objPipelineLayout);
                 }
 
                 vkCmdEndRenderPass(drawCmdBuffers[i]);
@@ -336,11 +338,11 @@ public:
                 } else {
                     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipeline);
 
-                    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+                    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipelineLayout, 0, 1,
                                             &descriptorSets.scene, 0, NULL);
 
                     for (auto model: demoModels) {
-                        model->Draw(drawCmdBuffers[i], pipelineLayout);
+                        model->Draw(drawCmdBuffers[i], objPipelineLayout);
                     }
                 }
 
@@ -393,6 +395,10 @@ public:
         VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = initializers::pipelineLayoutCreateInfo(&descriptorSetLayout,1);
 
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+
+        std::vector<VkDescriptorSetLayout> layouts { descriptorSetLayout, demoModels[0]->GetDescriptorSetLayout()};
+        pPipelineLayoutCreateInfo = initializers::pipelineLayoutCreateInfo(layouts.data(), 2);
+        VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &objPipelineLayout));
     }
 
     void setupDescriptorSet()
@@ -467,7 +473,7 @@ public:
         VkPipelineDynamicStateCreateInfo dynamicState = initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables, 0);
         std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
-        VkGraphicsPipelineCreateInfo pipelineCreateInfo = initializers::pipelineCreateInfo(pipelineLayout, renderPass, 0);
+        VkGraphicsPipelineCreateInfo pipelineCreateInfo = initializers::pipelineCreateInfo(objPipelineLayout, renderPass, 0);
         pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
         pipelineCreateInfo.pRasterizationState = &rasterizationState;
         pipelineCreateInfo.pColorBlendState = &colorBlendState;
@@ -518,6 +524,8 @@ public:
                         dynamicStateEnables.data(),
                         dynamicStateEnables.size(),
                         0);
+
+        pipelineCreateInfo.layout = pipelineLayout;
         pipelineCreateInfo.renderPass = offscreenPass.renderPass;
         VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &offscreenPipeline));
     }

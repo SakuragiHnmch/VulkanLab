@@ -22,6 +22,7 @@ layout (location = 1) out vec3 outColor;
 layout (location = 2) out vec3 outViewVec;
 layout (location = 3) out vec3 outLightVec;
 layout (location = 4) out vec4 outShadowCoord;
+layout (location = 5) out vec2 uv;
 
 const mat4 biasMat = mat4(
 	0.5, 0.0, 0.0, 0.0,
@@ -41,4 +42,6 @@ void main()
     outViewVec = ubo.cameraPos.xyz - pos.xyz;
 
 	outShadowCoord = ( biasMat * ubo.lightSpace * ubo.model ) * vec4(inPos, 1.0);
+
+	uv = inUV;
 }
