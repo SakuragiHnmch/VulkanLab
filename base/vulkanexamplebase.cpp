@@ -318,16 +318,22 @@ void VulkanExampleBase::keyCallback(int key, int action)
         case GLFW_PRESS:
             switch (key) {
                 case GLFW_KEY_W:
-                    camera.keys.up = true;
+                    camera.keys.front = true;
                     break;
                 case GLFW_KEY_S:
-                    camera.keys.down = true;
+                    camera.keys.back = true;
                     break;
                 case GLFW_KEY_A:
                     camera.keys.left = true;
                     break;
                 case GLFW_KEY_D:
                     camera.keys.right = true;
+                    break;
+                case GLFW_KEY_Q:
+                    camera.keys.up = true;
+                    break;
+                case GLFW_KEY_E:
+                    camera.keys.down = true;
                     break;
                 default:
                     break;
@@ -336,16 +342,22 @@ void VulkanExampleBase::keyCallback(int key, int action)
         case GLFW_RELEASE:
             switch (key) {
                 case GLFW_KEY_W:
-                    camera.keys.up = false;
+                    camera.keys.front = false;
                     break;
                 case GLFW_KEY_S:
-                    camera.keys.down = false;
+                    camera.keys.back = false;
                     break;
                 case GLFW_KEY_A:
                     camera.keys.left = false;
                     break;
                 case GLFW_KEY_D:
                     camera.keys.right = false;
+                    break;
+                case GLFW_KEY_Q:
+                    camera.keys.up = false;
+                    break;
+                case GLFW_KEY_E:
+                    camera.keys.down = false;
                     break;
                 default:
                     break;

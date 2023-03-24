@@ -112,6 +112,11 @@ std::vector<MeshMaterialGroup> LoadModel(const std::string path)
                         attrib.normals[3 * index.normal_index + 2]
                 };
 
+                // flipY
+//                vertex.pos.y *= -1.0f;
+//                vertex.normal.y *= -1.0f;
+//                vertex.tex_coord.y = 1.0 - vertex.tex_coord.y;
+
                 appendVertex(vertex, material_id);
 
             }
@@ -382,9 +387,9 @@ void ObjModel::Draw(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout)
 
         // 前一个参数first set指的是当前绑定的descriptorSet数组，从第几个set开始（shader中的 set = n），在同一个renderPass里面可以调用多次
         // 比如说，第一次调用vkCmdBindDescriptorSets，绑定了四个descriptorSets，那么第二次调用vkCmdBindDescriptorSets则需要传入firstSet=4（set从0开始计数）
-        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-                                1, 1, &part.material_descriptor_set,
-                                0, nullptr);
+//        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+//                                1, 1, &part.material_descriptor_set,
+//                                0, nullptr);
         vkCmdDrawIndexed(cmdBuffer, part.index_count, 1, 0, 0, 0);
     }
 }

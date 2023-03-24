@@ -144,7 +144,7 @@ public:
     std::string name    = "vulkanExample";
     uint32_t apiVersion = VK_API_VERSION_1_0;
 
-    VkClearColorValue defaultClearColor = { { 0.025f, 0.025f, 0.025f, 1.0f } };
+    VkClearColorValue defaultClearColor = { { 0.2f, 0.3f, 0.3f, 1.0f } };
 
     struct Settings {
         bool validation = false;

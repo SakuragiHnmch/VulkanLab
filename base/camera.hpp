@@ -64,11 +64,13 @@ public:
         bool right = false;
         bool up = false;
         bool down = false;
+        bool front = false;
+        bool back = false;
     } keys;
 
     bool moving()
     {
-        return keys.left || keys.right || keys.up || keys.down;
+        return keys.left || keys.right || keys.up || keys.down || keys.front || keys.back;
     }
 
     float getNearClip() {
@@ -153,14 +155,18 @@ public:
 
                 float moveSpeed = deltaTime * movementSpeed;
 
-                if (keys.up)
+                if (keys.front)
                     position += camFront * moveSpeed;
-                if (keys.down)
+                if (keys.back)
                     position -= camFront * moveSpeed;
                 if (keys.left)
                     position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
                 if (keys.right)
                     position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+                if (keys.up)
+                    position += glm::vec3(0.0f, 1.0f, 0.0f) * moveSpeed;
+                if (keys.down)
+                    position -= glm::vec3(0.0f, 1.0f, 0.0f) * moveSpeed;
 
                 updateViewMatrix();
             }

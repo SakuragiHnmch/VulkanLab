@@ -12,7 +12,7 @@ public:
     // Keep depth range as small as possible
     // for better shadow map precision
     float zNear = 1.0f;
-    float zFar = 256.0f;
+    float zFar = 96.0f;
 
     // Depth bias (and slope) are used to avoid shadowing artifacts
     // Constant depth bias factor (always applied)
@@ -31,7 +31,8 @@ public:
         VkDescriptorSet debug;
     } descriptorSets;
 
-    glm::vec4 lightPos = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(.0f, 3.0f, 5.0f, 1.0f);
+    float lightFOV = 45.0f;
 
     Buffer offscreenUBO;
     Buffer sceneUBO;
@@ -40,12 +41,14 @@ public:
     } uboOffscreenVS;
     struct {
         glm::mat4 projection;
-        glm::mat4 model;
-        glm::mat4 normal;
         glm::mat4 view;
-        glm::mat4 depthMVP;
+        glm::mat4 model;
+        glm::mat4 lightSpace;
         glm::vec4 lightPos;
         glm::vec4 cameraPos;
+        // Used for depth map visualization
+        float zNear;
+        float zFar;
     } uboVS;
 
     VkPipeline objPipeline;
@@ -68,17 +71,17 @@ public:
         VkDescriptorImageInfo descriptor;
     } offscreenPass;
 
-    bool displayShadowMap = true;
+    bool displayShadowMap = false;
 
     Shadow() : VulkanExampleBase(ENABLE_VALIDATION)
     {
         title = "Games 202 - Shadow";
         camera.type = Camera::CameraType::firstperson;
         camera.flipY = true;
-        camera.setPosition(glm::vec3(0.0f, 3.5f, -5.0f));
+        camera.setPosition(glm::vec3(0.0f, 6.0f, -10.0f));
         camera.setRotation(glm::vec3(0.0f, 0.0f, 0.0f));
         camera.setRotationSpeed(0.5f);
-        camera.setPerspective(75.0f, (float)width / (float)height, 1.0f, 256.0f);
+        camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 256.0f);
     }
 
     ~Shadow()
@@ -218,7 +221,7 @@ public:
         sampler.magFilter = shadowmap_filter;
         sampler.minFilter = shadowmap_filter;
         sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
         sampler.addressModeV = sampler.addressModeU;
         sampler.addressModeW = sampler.addressModeU;
         sampler.mipLodBias = 0.0f;
@@ -324,21 +327,21 @@ public:
                 scissor = initializers::rect2D(width, height, 0, 0);
                 vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-//                if (displayShadowMap) {
-//                    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0,
-//                                            nullptr);
-//                    vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, debugPipeline);
-//                    vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
-//
-//                }
+                if (displayShadowMap) {
+                    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0,
+                                            nullptr);
+                    vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, debugPipeline);
+                    vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
 
-                vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipeline);
+                } else {
+                    vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipeline);
 
-                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
-                                        &descriptorSets.scene, 0, NULL);
+                    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+                                            &descriptorSets.scene, 0, NULL);
 
-                for (auto model: demoModels) {
-                    model->Draw(drawCmdBuffers[i], pipelineLayout);
+                    for (auto model: demoModels) {
+                        model->Draw(drawCmdBuffers[i], pipelineLayout);
+                    }
                 }
 
                 drawUI(drawCmdBuffers[i]);
@@ -387,11 +390,7 @@ public:
 
         VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout));
 
-        std::vector<VkDescriptorSetLayout> layouts = { descriptorSetLayout, demoModels[0]->GetDescriptorSetLayout() };
-        VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo =
-                initializers::pipelineLayoutCreateInfo(
-                        layouts.data(),
-                        static_cast<uint32_t>(layouts.size()));
+        VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = initializers::pipelineLayoutCreateInfo(&descriptorSetLayout,1);
 
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
     }
@@ -498,6 +497,7 @@ public:
         vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
         pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+        rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
 
         // Default mesh rendering pipeline
         shaderStages[0] = loadShader(getShadersPath() + "Shadow/phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
@@ -509,6 +509,7 @@ public:
         pipelineCreateInfo.stageCount = 1;
         colorBlendState.attachmentCount = 0;  // no colorAttachment used
         depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        rasterizationState.cullMode = VK_CULL_MODE_NONE;
         rasterizationState.depthBiasEnable = VK_TRUE;
         // Add depth bias to dynamic state, so we can change it at runtime
         dynamicStateEnables.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
@@ -544,24 +545,26 @@ public:
     void updateUniformBuffers()
     {
         // Animate the light source
-        lightPos.x = 0.0f;
-        lightPos.y = 3.5f;
-        lightPos.z = 5.0f;
+        lightPos.x = cos(glm::radians(timer * 360.0f)) * 5.5f;
+        lightPos.y = 6.0f;
+        lightPos.z = sin(glm::radians(timer * 360.0f)) * 5.5f;
 
         // Matrix from light's point of view
-        glm::mat4 depthProjectionMatrix = camera.matrices.perspective;
-        glm::mat4 depthViewMatrix = camera.matrices.view;
+        glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);
+        glm::mat4 depthViewMatrix = glm::lookAt(glm::vec3(lightPos), glm::vec3(0.0f), glm::vec3(0, 1, 0));
         glm::mat4 depthModelMatrix = glm::mat4(1.0f);
+
         uboOffscreenVS.depthMVP = depthProjectionMatrix * depthViewMatrix * depthModelMatrix;
         memcpy(offscreenUBO.mapped, &uboOffscreenVS, sizeof(uboOffscreenVS));
 
         uboVS.projection = camera.matrices.perspective;
         uboVS.view = camera.matrices.view;
         uboVS.model = glm::mat4(1.0f);
-        uboVS.normal = glm::inverseTranspose(uboVS.model);
-        uboVS.depthMVP = uboOffscreenVS.depthMVP;
-        uboVS.lightPos = camera.viewPos;
-        uboVS.cameraPos = camera.viewPos;
+        uboVS.lightPos = lightPos;
+        uboVS.cameraPos = glm::vec4(camera.position, 1.0f);
+        uboVS.lightSpace = uboOffscreenVS.depthMVP;
+        uboVS.zNear = zNear;
+        uboVS.zFar = zFar;
         memcpy(sceneUBO.mapped, &uboVS, sizeof(uboVS));
     }
 
