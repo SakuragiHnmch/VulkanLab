@@ -7,11 +7,7 @@
 
 #include "ModelParser.h"
 
-#define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
-#define TINYGLTF_NO_STB_IMAGE_WRITE
-
-#include "ModelParser.h"
 
 using namespace MParser;
 
@@ -403,9 +399,6 @@ void Texture::load(const aiScene *scene, std::string fileName, std::string fileP
     descriptor.imageLayout = imageLayout;
 }
 
-/*
-	glTF material
-*/
 void Material::createDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptorSetLayout descriptorSetLayout, uint32_t descriptorBindingFlags)
 {
     VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
@@ -417,16 +410,23 @@ void Material::createDescriptorSet(VkDescriptorPool descriptorPool, VkDescriptor
     std::vector<VkDescriptorImageInfo> imageDescriptors{};
     std::vector<VkWriteDescriptorSet> writeDescriptorSets{};
     if (descriptorBindingFlags & DescriptorBindingFlags::ImageBaseColor) {
-        imageDescriptors.emplace_back(baseColorTexture->descriptor);
         VkWriteDescriptorSet writeDescriptorSet{};
         writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         writeDescriptorSet.descriptorCount = 1;
         writeDescriptorSet.dstSet = descriptorSet;
         writeDescriptorSet.dstBinding = 0;
-        writeDescriptorSet.pImageInfo = &baseColorTexture->descriptor;
+        
+        if (diffuseTexture) {
+            imageDescriptors.emplace_back(diffuseTexture->descriptor);
+            writeDescriptorSet.pImageInfo = &diffuseTexture->descriptor;
+        } else {
+            imageDescriptors.emplace_back(emptyTexture->descriptor);
+            writeDescriptorSet.pImageInfo = &emptyTexture->descriptor;
+        }
         writeDescriptorSets.emplace_back(writeDescriptorSet);
     }
+    
     if (normalTexture && descriptorBindingFlags & DescriptorBindingFlags::ImageNormalMap) {
         imageDescriptors.emplace_back(normalTexture->descriptor);
         VkWriteDescriptorSet writeDescriptorSet{};
@@ -628,14 +628,14 @@ Texture* Model::getTexture(uint32_t index)
 void Model::createEmptyTexture(VkQueue transferQueue)
 {
     emptyTexture.device = device;
-    emptyTexture.width = 1;
-    emptyTexture.height = 1;
+    emptyTexture.width = 4;
+    emptyTexture.height = 4;
     emptyTexture.layerCount = 1;
     emptyTexture.mipLevels = 1;
 
     size_t bufferSize = emptyTexture.width * emptyTexture.height * 4;
     unsigned char* buffer = new unsigned char[bufferSize];
-    memset(buffer, 0, bufferSize);
+    memset(buffer, 255, bufferSize);
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingMemory;
@@ -845,6 +845,7 @@ void Model::loadNode(const aiScene* scene, aiNode* node, Node* parent)
                 glm::make_vec3(&mesh->mAABB.mMin.x),
                 glm::make_vec3(&mesh->mAABB.mMax.x)
             );
+            geo->meshes.emplace_back(mMesh);
         }
 
         mNode->geo = geo;
@@ -911,8 +912,18 @@ void Model::loadMaterials(const aiScene *scene, VkQueue transferQueue)
         auto* material = scene->mMaterials[i];
 
         auto* mMaterial = new Material(device, &emptyTexture);
-        mMaterial->baseColorTexture = loadMaterialTexture(scene, material, aiTextureType_DIFFUSE, transferQueue);
-        mMaterial->normalTexture = loadMaterialTexture(scene, material, aiTextureType_NORMALS, transferQueue);
+        if (descriptorBindingFlags & DescriptorBindingFlags::ImageBaseColor) {
+            mMaterial->diffuseTexture = loadMaterialTexture(scene, material, aiTextureType_DIFFUSE, transferQueue);
+        }
+        
+        if (descriptorBindingFlags & DescriptorBindingFlags::ImageNormalMap) {
+            mMaterial->normalTexture = loadMaterialTexture(scene, material, aiTextureType_NORMALS, transferQueue);
+            
+        }
+        
+        if (descriptorBindingFlags & DescriptorBindingFlags::ImagePbr) {
+            // TODO prb image
+        }
 
         materials.emplace_back(std::move(mMaterial));
     }
@@ -1035,7 +1046,7 @@ void Model::loadMaterials(const aiScene *scene, VkQueue transferQueue)
 void Model::loadFromFile(std::string filename, VulkanDevice *device, VkQueue transferQueue, uint32_t fileLoadingFlags)
 {
     Assimp::Importer importer;
-    const auto* scene = importer.ReadFile(filename, aiProcess_Triangulate);
+    const auto* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::cerr << "failed to load model file: " << path << std::endl;
         exit(-1);
@@ -1172,35 +1183,46 @@ void Model::loadFromFile(std::string filename, VulkanDevice *device, VkQueue tra
     // Setup descriptors
     uint32_t uboCount{ 0 };
     uint32_t imageCount{ 0 };
+    uint32_t matCnt { 0 };
     for (auto node : linearNodes) {
         if (node->geo) {
             uboCount++;
         }
     }
     for (auto material : materials) {
-        if (material->baseColorTexture != nullptr) {
+        matCnt++;
+        if (descriptorBindingFlags & DescriptorBindingFlags::ImagePbr) {
+            imageCount += 4;
+            continue;
+        }
+        if (descriptorBindingFlags & DescriptorBindingFlags::ImageNormalMap) {
+            imageCount += 2;
+            continue;
+        }
+        if (descriptorBindingFlags & DescriptorBindingFlags::ImageBaseColor) {
             imageCount++;
+            continue;
         }
     }
     std::vector<VkDescriptorPoolSize> poolSizes = {
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uboCount },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uboCount },
     };
     if (imageCount > 0) {
         if (descriptorBindingFlags & DescriptorBindingFlags::ImageBaseColor) {
-            poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imageCount });
+            poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, matCnt });
         }
         if (descriptorBindingFlags & DescriptorBindingFlags::ImageNormalMap) {
-            poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imageCount });
+            poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, matCnt });
         }
         if (descriptorBindingFlags & DescriptorBindingFlags::ImagePbr) {
-            poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imageCount * 2 });
+            poolSizes.push_back({ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, matCnt * 2 });
         }
     }
     VkDescriptorPoolCreateInfo descriptorPoolCI{};
     descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     descriptorPoolCI.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     descriptorPoolCI.pPoolSizes = poolSizes.data();
-    descriptorPoolCI.maxSets = uboCount + imageCount;
+    descriptorPoolCI.maxSets = matCnt;
     VK_CHECK_RESULT(vkCreateDescriptorPool(device->logicalDevice, &descriptorPoolCI, nullptr, &descriptorPool));
 
     // Descriptors for per-node uniform buffers
@@ -1234,7 +1256,7 @@ void Model::loadFromFile(std::string filename, VulkanDevice *device, VkQueue tra
                 // normal map, binding = 1
                 setLayoutBindings.push_back(initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, static_cast<uint32_t>(setLayoutBindings.size())));
             }
-            if (descriptorBindingFlags & DescriptorBindingFlags::ImageNormalMap) {
+            if (descriptorBindingFlags & DescriptorBindingFlags::ImagePbr) {
                 // ao map, binding = 2
                 setLayoutBindings.push_back(initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, static_cast<uint32_t>(setLayoutBindings.size())));
                 // metallicRoughness map, binding = 3
@@ -1247,7 +1269,7 @@ void Model::loadFromFile(std::string filename, VulkanDevice *device, VkQueue tra
             VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->logicalDevice, &descriptorLayoutCI, nullptr, &descriptorSetLayoutImage));
         }
         for (auto& material : materials) {
-            if (material->baseColorTexture != nullptr) {
+            if (descriptorBindingFlags & DescriptorBindingFlags::ImageBaseColor) {
                 material->createDescriptorSet(descriptorPool, descriptorSetLayoutImage, descriptorBindingFlags);
             }
         }
@@ -1303,8 +1325,9 @@ void Model::draw(VkCommandBuffer commandBuffer, uint32_t renderFlags, VkPipeline
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertices.buffer, offsets);
         vkCmdBindIndexBuffer(commandBuffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
     }
-    for (auto& node : nodes) {
-        drawNode(node, commandBuffer, renderFlags, pipelineLayout, bindImageSet);
+
+    if (rootNode) {
+        drawNode(rootNode, commandBuffer, renderFlags, pipelineLayout, bindImageSet);
     }
 }
 

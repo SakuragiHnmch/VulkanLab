@@ -35,8 +35,8 @@ public:
         VkDescriptorSet debug;
     } descriptorSets;
 
-    glm::vec4 lightPos = glm::vec4(.0f, 3.0f, 5.0f, 1.0f);
-    float lightFOV = 45.0f;
+    glm::vec4 lightPos = glm::vec4(2.0f, 3.0f, 5.0f, 1.0f);
+    float lightFOV = 55.0f;
 
     Buffer offscreenUBO;
     Buffer sceneUBO;
@@ -226,8 +226,8 @@ public:
         sampler.minFilter = shadowmap_filter;
         sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        sampler.addressModeV = sampler.addressModeU;
-        sampler.addressModeW = sampler.addressModeU;
+        sampler.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        sampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
         sampler.mipLodBias = 0.0f;
         sampler.maxAnisotropy = 1.0f;
         sampler.minLod = 0.0f;
@@ -251,7 +251,7 @@ public:
 
     void loadAssets()
     {
-        std::vector<std::string> modelFiles = { "floor", "Marry" };
+        std::vector<std::string> modelFiles = { "Marry", "floor" };
         for (auto i = 0; i < modelFiles.size(); i++) {
             auto* model = new Model();
             model->loadFromFile(getAssetPath() + "models/Shadow/" + modelFiles[i] + "/" + modelFiles[i] + ".obj", vulkanDevice, queue);
@@ -303,7 +303,7 @@ public:
                 vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
 
                 for (auto model : demoModels) {
-                    model->draw(drawCmdBuffers[i], 0,objPipelineLayout);
+                    model->draw(drawCmdBuffers[i], RenderFlags::BindImages, objPipelineLayout);
                 }
 
                 vkCmdEndRenderPass(drawCmdBuffers[i]);
@@ -344,7 +344,7 @@ public:
                                             &descriptorSets.scene, 0, NULL);
 
                     for (auto model: demoModels) {
-                        model->draw(drawCmdBuffers[i], 0, objPipelineLayout);
+                        model->draw(drawCmdBuffers[i], RenderFlags::BindImages, objPipelineLayout);
                     }
                 }
 
@@ -398,7 +398,7 @@ public:
 
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
-        std::vector<VkDescriptorSetLayout> layouts { descriptorSetLayout };
+        std::vector<VkDescriptorSetLayout> layouts { descriptorSetLayout, descriptorSetLayoutImage };
         pPipelineLayoutCreateInfo = initializers::pipelineLayoutCreateInfo(layouts.data(), 2);
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &objPipelineLayout));
     }
@@ -563,9 +563,9 @@ public:
     void updateUniformBuffers()
     {
         // Animate the light source
-        lightPos.x = cos(glm::radians(timer * 360.0f)) * 5.5f;
+        lightPos.x = cos(glm::radians(timer * 360.0f)) * 5.5f + 9.0f;
         lightPos.y = 6.0f;
-        lightPos.z = sin(glm::radians(timer * 360.0f)) * 5.5f;
+        lightPos.z = sin(glm::radians(timer * 360.0f)) * 5.5f + 5.0f;
 
         // Matrix from light's point of view
         glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);

@@ -60,20 +60,21 @@ namespace MParser
 
     struct Material {
         VulkanDevice* device = nullptr;
+        
         enum AlphaMode { ALPHAMODE_OPAQUE, ALPHAMODE_MASK, ALPHAMODE_BLEND };
         AlphaMode alphaMode = ALPHAMODE_OPAQUE;
         float alphaCutoff = 1.0f;
         float metallicFactor = 1.0f;
         float roughnessFactor = 1.0f;
         glm::vec4 baseColorFactor = glm::vec4(1.0f);
-        Texture* baseColorTexture = nullptr;
-        Texture* metallicRoughnessTexture = nullptr;
+        
+        Texture* diffuseTexture = nullptr;
         Texture* normalTexture = nullptr;
         Texture* occlusionTexture = nullptr;
+        Texture* metallicRoughnessTexture = nullptr;
+        
         Texture* emissiveTexture = nullptr;
-
         Texture* specularGlossinessTexture = nullptr;
-        Texture* diffuseTexture = nullptr;
 
         Texture* emptyTexture = nullptr;
 
