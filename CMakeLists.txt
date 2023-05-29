@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.17)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
-set(NAME learn_vulkan)
+set(NAME VulkanLab)
 project(${NAME})
 
 set(CMAKE_CXX_STANDARD 11)
@@ -13,25 +12,19 @@ include_directories(3rd/glfw-3.3.6/include)
 include_directories(3rd/tinyobj)
 include_directories(base)
 
-if (NOT CMAKE_VERSION VERSION_LESS 3.7.0)
-    message(STATUS "Using module to find Vulkan")
-    find_package(Vulkan)
-endif()
+find_package(Vulkan)
 
 if (NOT Vulkan_FOUND)
     message(FATAL_ERROR "Could not find Vulkan library!")
 else()
-    message(STATUS ${Vulkan_LIBRARY})
+    message(STATUS "Found Vulkan lib: " ${Vulkan_LIBRARY})
+    message(STATUS ${Vulkan_INCLUDE_DIR})
 endif()
 
 
 set(CMAKE_CXX_FLAGS "-DVK_USE_PLATFORM_MACOS_MVK")
 
-# Clang specific stuff
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-switch-enum")
-endif()
-
+include_directories(${Vulkan_INCLUDE_DIR})
 link_libraries(${Vulkan_LIBRARIES})
 
 add_subdirectory(3rd)
