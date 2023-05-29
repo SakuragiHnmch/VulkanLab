@@ -3,9 +3,11 @@
 //
 
 #include <vulkanexamplebase.h>
-#include <VulkanObjModel.h>
+#include <ModelParser.h>
 
 #define ENABLE_VALIDATION true
+
+using namespace MParser;
 
 class Shadow : public VulkanExampleBase {
 public:
@@ -20,7 +22,7 @@ public:
     // Slope depth bias factor, applied depending on polygon's slope
     float depthBiasSlope = 1.75f;
 
-    std::vector<ObjModel*> demoModels;
+    std::vector<Model*> demoModels;
 
     VkPipelineLayout pipelineLayout;
     VkDescriptorSetLayout descriptorSetLayout;
@@ -251,8 +253,8 @@ public:
     {
         std::vector<std::string> modelFiles = { "floor", "Marry" };
         for (auto i = 0; i < modelFiles.size(); i++) {
-            auto* model = new ObjModel(vulkanDevice);
-            model->LoadModelFromFile(getAssetPath() + "models/Shadow/" + modelFiles[i] + "/" + modelFiles[i] + ".obj", vulkanDevice, queue);
+            auto* model = new Model();
+            model->loadFromFile(getAssetPath() + "models/Shadow/" + modelFiles[i] + "/" + modelFiles[i] + ".obj", vulkanDevice, queue);
             demoModels.push_back(model);
         }
     }
@@ -301,7 +303,7 @@ public:
                 vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
 
                 for (auto model : demoModels) {
-                    model->Draw(drawCmdBuffers[i], objPipelineLayout);
+                    model->draw(drawCmdBuffers[i], 0,objPipelineLayout);
                 }
 
                 vkCmdEndRenderPass(drawCmdBuffers[i]);
@@ -342,7 +344,7 @@ public:
                                             &descriptorSets.scene, 0, NULL);
 
                     for (auto model: demoModels) {
-                        model->Draw(drawCmdBuffers[i], objPipelineLayout);
+                        model->draw(drawCmdBuffers[i], 0, objPipelineLayout);
                     }
                 }
 
@@ -396,7 +398,7 @@ public:
 
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
-        std::vector<VkDescriptorSetLayout> layouts { descriptorSetLayout, demoModels[0]->GetDescriptorSetLayout()};
+        std::vector<VkDescriptorSetLayout> layouts { descriptorSetLayout };
         pPipelineLayoutCreateInfo = initializers::pipelineLayoutCreateInfo(layouts.data(), 2);
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &objPipelineLayout));
     }
@@ -493,14 +495,22 @@ public:
         VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &debugPipeline));
 
         // Scene rendering with shadow applied
-        auto bindingDescription = Vertex::getBindingDescription();
-        auto attributeDescriptions = Vertex::getAttributeDescriptions();
+        // Vertex input bindings and attributes
+        const std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
+                initializers::vertexInputBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX),
+        };
+        const std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
+                initializers::vertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)),	// Location 0: Position
+                initializers::vertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)),// Location 1: Normal
+                initializers::vertexInputAttributeDescription(0, 2, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, uv)),	// Location 2: Texture coordinates
+                initializers::vertexInputAttributeDescription(0, 3, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color)),	// Location 3: Color
+        };
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
+        vertexInputInfo.pVertexBindingDescriptions = vertexInputBindings.data();
+        vertexInputInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
         pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
         rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;

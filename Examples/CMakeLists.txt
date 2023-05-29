@@ -14,7 +14,7 @@ function(buildExample EXAMPLE_NAME)
 	source_group("Shaders\\GLSL" FILES ${SHADERS_GLSL})
 
     add_executable(${EXAMPLE_NAME} ${SOURCE})
-    target_link_libraries(${EXAMPLE_NAME} base )
+    target_link_libraries(${EXAMPLE_NAME} base ${Vulkan_LIBRARY} glfw assimp)
 endfunction(buildExample)
 
 function(buildExamples)
