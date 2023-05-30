@@ -15,6 +15,11 @@ public:
     // for better shadow map precision
     float zNear = 1.0f;
     float zFar = 96.0f;
+    
+    struct PushConstant {
+        int enablePcf = 0;
+        int enablePcss = 0;
+    } pushConstant;
 
     // Depth bias (and slope) are used to avoid shadowing artifacts
     // Constant depth bias factor (always applied)
@@ -35,7 +40,7 @@ public:
         VkDescriptorSet debug;
     } descriptorSets;
 
-    glm::vec4 lightPos = glm::vec4(2.0f, 3.0f, 5.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(9.0f, 9.0f, 9.0f, 1.0f);
     float lightFOV = 55.0f;
 
     Buffer offscreenUBO;
@@ -300,10 +305,10 @@ public:
                         depthBiasSlope);
 
                 vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, offscreenPipeline);
-                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
+                vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.offscreen, 0, nullptr);
 
                 for (auto model : demoModels) {
-                    model->draw(drawCmdBuffers[i], RenderFlags::BindImages, objPipelineLayout);
+                    model->draw(drawCmdBuffers[i], 0, pipelineLayout);
                 }
 
                 vkCmdEndRenderPass(drawCmdBuffers[i]);
@@ -342,7 +347,8 @@ public:
 
                     vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objPipelineLayout, 0, 1,
                                             &descriptorSets.scene, 0, NULL);
-
+                    
+                    vkCmdPushConstants(drawCmdBuffers[i], objPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstant), &pushConstant);
                     for (auto model: demoModels) {
                         model->draw(drawCmdBuffers[i], RenderFlags::BindImages, objPipelineLayout);
                     }
@@ -399,7 +405,15 @@ public:
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
         std::vector<VkDescriptorSetLayout> layouts { descriptorSetLayout, descriptorSetLayoutImage };
+        VkPushConstantRange pushConstantRange{};
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pushConstantRange.offset = 0;
+        pushConstantRange.size = sizeof(PushConstant);
+        
         pPipelineLayoutCreateInfo = initializers::pipelineLayoutCreateInfo(layouts.data(), 2);
+        pPipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+        pPipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+        
         VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &objPipelineLayout));
     }
 
@@ -475,7 +489,7 @@ public:
         VkPipelineDynamicStateCreateInfo dynamicState = initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables, 0);
         std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
-        VkGraphicsPipelineCreateInfo pipelineCreateInfo = initializers::pipelineCreateInfo(objPipelineLayout, renderPass, 0);
+        VkGraphicsPipelineCreateInfo pipelineCreateInfo = initializers::pipelineCreateInfo(pipelineLayout, renderPass, 0);
         pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
         pipelineCreateInfo.pRasterizationState = &rasterizationState;
         pipelineCreateInfo.pColorBlendState = &colorBlendState;
@@ -516,6 +530,7 @@ public:
         rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
 
         // Default mesh rendering pipeline
+        pipelineCreateInfo.layout = objPipelineLayout;
         shaderStages[0] = loadShader(getShadersPath() + "Shadow/phong.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
         shaderStages[1] = loadShader(getShadersPath() + "Shadow/phong.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
         VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &objPipeline));
@@ -563,9 +578,9 @@ public:
     void updateUniformBuffers()
     {
         // Animate the light source
-        lightPos.x = cos(glm::radians(timer * 360.0f)) * 5.5f + 9.0f;
-        lightPos.y = 6.0f;
-        lightPos.z = sin(glm::radians(timer * 360.0f)) * 5.5f + 5.0f;
+//        lightPos.x = cos(glm::radians(timer * 360.0f)) * 5.5f + 9.0f;
+//        lightPos.y = 6.0f;
+//        lightPos.z = sin(glm::radians(timer * 360.0f)) * 5.5f + 5.0f;
 
         // Matrix from light's point of view
         glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);
@@ -619,6 +634,26 @@ public:
     virtual void viewChanged()
     {
         updateUniformBuffers();
+    }
+    
+    virtual void OnUpdateUIOverlay(UIOverlay *overlay)
+    {
+        if (overlay->header("Settings")) {
+            if (overlay->inputFloat("lightPosX", &lightPos.x, 0.5f, 2)) {
+                updateUniformBuffers();
+            }
+            
+            if (overlay->inputFloat("lightPosY", &lightPos.y, 0.5f, 2)) {
+                updateUniformBuffers();
+            }
+            
+            if (overlay->inputFloat("lightPosZ", &lightPos.z, 0.5f, 2)) {
+                updateUniformBuffers();
+            }
+            
+            overlay->checkBox("enablePCF", &pushConstant.enablePcf);
+            overlay->checkBox("enablePCSS", &pushConstant.enablePcss);
+        }
     }
 
 };

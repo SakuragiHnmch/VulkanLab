@@ -228,6 +228,9 @@ GLFWwindow* VulkanExampleBase::setupWindow()
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    
+    // can`t set GLFW_COCOA_RETINA_FRAMEBUFFER directly, for the whole screen will be vague
+//    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_NO_API);
 
     window = glfwCreateWindow(width, height, getWindowTitle().c_str(), nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);

@@ -13,13 +13,16 @@ layout (location = 0) out vec4 outFragColor;
 
 layout (set = 1, binding = 0) uniform sampler2D albedoMap;
 
-layout (constant_id = 0) const int enablePCF = 1;
+layout(push_constant) uniform PushConsts {
+	int enablePCF;
+	int enablePCSS;
+} pushConsts;
 
 #define ambient 0.1
 
 float textureProj(vec4 shadowCoord, vec2 off)
 {
-    float bias = 0.005;
+    float bias = 0.001;
 	float visibility = 1.0;
 	if ( shadowCoord.z > 0.0 && shadowCoord.z < 1.0 )
 	{
@@ -58,7 +61,7 @@ float filterPCF(vec4 shadowCoord)
 void main() 
 {
 	float visibility = 1;
-	if (enablePCF == 0) {
+	if (pushConsts.enablePCF == 0) {
 		visibility = textureProj(inShadowCoord / inShadowCoord.w, vec2(0.0));
 	} else {
 		visibility = filterPCF(inShadowCoord / inShadowCoord.w);

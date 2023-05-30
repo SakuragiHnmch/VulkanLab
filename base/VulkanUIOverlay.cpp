@@ -359,11 +359,23 @@ void UIOverlay::draw(const VkCommandBuffer commandBuffer)
         for (int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++)
         {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[j];
+            
+            // double the viewport width and height
+            // for retina screen has quad times of pixels than normal screen
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = imDrawData->DisplaySize.x * 2.0f;
+            viewport.height = imDrawData->DisplaySize.y * 2.0f;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+            
             VkRect2D scissorRect;
             scissorRect.offset.x = std::max((int32_t)(pcmd->ClipRect.x), 0);
             scissorRect.offset.y = std::max((int32_t)(pcmd->ClipRect.y), 0);
-            scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
-            scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
+            scissorRect.extent.width = (uint32_t)((pcmd->ClipRect.z - pcmd->ClipRect.x) * 2.1f);
+            scissorRect.extent.height = (uint32_t)((pcmd->ClipRect.w - pcmd->ClipRect.y) * 2.1f);
             vkCmdSetScissor(commandBuffer, 0, 1, &scissorRect);
             vkCmdDrawIndexed(commandBuffer, pcmd->ElemCount, 1, indexOffset, vertexOffset, 0);
             indexOffset += pcmd->ElemCount;
