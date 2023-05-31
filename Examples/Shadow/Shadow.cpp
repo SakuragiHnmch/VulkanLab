@@ -17,8 +17,11 @@ public:
     float zFar = 96.0f;
     
     struct PushConstant {
-        int enablePcf = 0;
+        int enablePcf = 1;
         int enablePcss = 0;
+        int sampleNum = 10;
+        float radius = 2.0f;
+        float lightWidth = 1.0f;
     } pushConstant;
 
     // Depth bias (and slope) are used to avoid shadowing artifacts
@@ -639,6 +642,9 @@ public:
     virtual void OnUpdateUIOverlay(UIOverlay *overlay)
     {
         if (overlay->header("Settings")) {
+            overlay->sliderInt("SampleNum", &pushConstant.sampleNum, 5, 100);
+
+            
             if (overlay->inputFloat("lightPosX", &lightPos.x, 0.5f, 2)) {
                 updateUniformBuffers();
             }
@@ -651,8 +657,11 @@ public:
                 updateUniformBuffers();
             }
             
+            overlay->inputFloat("PCSSLightWidth", &pushConstant.lightWidth, 1.0f, 2);
+            overlay->inputFloat("PCFRadius", &pushConstant.radius, 0.5f, 2);
             overlay->checkBox("enablePCF", &pushConstant.enablePcf);
             overlay->checkBox("enablePCSS", &pushConstant.enablePcss);
+            
         }
     }
 
